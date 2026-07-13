@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tai Yi Tian - Portfolio</title>
+  </head>
+  <body id="member-page">
+    <canvas id="bg"></canvas>
+
+    <script>
+      window.MEMBER_DATA = {
+        name: "Tai Yi Tian",
+        role: "Fullstack Developer",
+        skills: ['VUE.JS', 'TYPESCRIPT', 'GRAPHQL', 'MONGODB', 'THREE.JS', 'AWS'],
+        projects: [
+          { title: "Galactic CRM", desc: "A robust customer relationship manager for a fictional space agency.", tech: ["Vue.js", "Node.js", "MongoDB"] },
+          { title: "Real-time Chat", desc: "A highly scalable WebSocket-based communication platform.", tech: ["TypeScript", "Socket.io", "Redis"] },
+          { title: "3D Product Viewer", desc: "Interactive 3D viewer for e-commerce products.", tech: ["Three.js", "WebGL", "Vue.js"] },
+          { title: "GraphQL API", desc: "Unified GraphQL layer combining multiple REST microservices.", tech: ["GraphQL", "Apollo Server", "TypeScript"] }
+        ]
+      };
+    </script>
+
+    <main id="app">
+      <nav>
+        <a href="index.html" class="logo" style="text-decoration: none; color: inherit;">Group Name</a>
+        <ul class="nav-links">
+          <li><a href="index.html">Back to Home</a></li>
+          <li><a href="#member-skills">Skills</a></li>
+          <li><a href="#member-projects">Projects</a></li>
+          <li><a href="#member-contact">Contact</a></li>
+        </ul>
+      </nav>
+
+      <section class="section" style="padding-top: 120px;">
+        <div style="max-width: 800px; margin: 0 auto; width: 100%;">
+          <h1 id="detail-name">Tai Yi Tian</h1>
+          <p id="detail-role" class="role" style="font-size: 1.5rem; margin-bottom: 2rem;">Fullstack Developer</p>
+          
+          <div id="member-skills" style="margin-bottom: 4rem; position: relative;">
+            <h2 style="text-align: center; margin-bottom: 2rem;">MY SKILLS</h2>
+            <div style="height: 600px; width: 100%; pointer-events: none;"></div>
+          </div>
+
+          <div id="member-projects" style="margin-bottom: 4rem;">
+            <h2 style="text-align: center; margin-bottom: 2rem;">MY PROJECTS</h2>
+            <div class="project-gallery-layout" style="display: flex; align-items: center; gap: 2rem; justify-content: center;">
+              <div class="project-carousel-container" style="flex: 1; max-width: 1000px; display: flex; align-items: center; justify-content: center; position: relative;">
+                <button id="prev-project" class="arrow-btn" style="position: absolute; left: 0; z-index: 10;">&lt;</button>
+                <div id="projects-spacer" style="height: 600px; width: 100%; pointer-events: none;"></div>
+                <button id="next-project" class="arrow-btn" style="position: absolute; right: 0; z-index: 10;">&gt;</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="member-contact" style="margin-bottom: 4rem;">
+            <h2>Contact</h2>
+            <div style="background: var(--glass-bg); padding: 2rem; border-radius: 15px; border: 1px solid var(--glass-border);">
+              <p>Email: tai@example.com</p>
+              <p>LinkedIn: linkedin.com/in/tai</p>
+              <form style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
+                <input type="text" placeholder="Your Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+                <input type="email" placeholder="Your Email" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
+                <textarea placeholder="Your Message" rows="4" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;"></textarea>
+                <button type="button" class="btn">Send Message</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="skills-labels" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100;"></div>
+
+    <div id="project-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <button id="close-modal-btn" class="modal-close">&times;</button>
+        <div class="modal-layout">
+          <div class="modal-left">
+            <div class="modal-media-placeholder"><span class="play-icon">▶</span></div>
+          </div>
+          <div class="modal-right">
+            <h2 id="modal-title">PROJECT TITLE</h2>
+            <p id="modal-desc">Brief description.</p>
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; font-size: 0.9rem; letter-spacing: 1px; color: var(--text-secondary);">TECHNOLOGIES USED</h3>
+            <div class="tech-stack" id="modal-tech"></div>
+            <button class="btn" style="margin-top: 3rem; width: 100%;">LIVE DEMO ↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

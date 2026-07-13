@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Space Portfolio</title>
+  </head>
+  <body id="index-page">
+    <!-- Three.js Canvas -->
+    <canvas id="bg"></canvas>
+
+    <main id="app">
+      <!-- Navigation -->
+      <nav>
+        <a href="index.html" class="logo" style="text-decoration: none; color: inherit;">Group Name</a>
+        <ul class="nav-links">
+          <li><a href="#landing">Home</a></li>
+          <li><a href="#about">About Us</a></li>
+        </ul>
+      </nav>
+
+      <!-- Landing Section -->
+      <section id="landing" class="section">
+        <div class="content-left">
+          <h1>We Design.<br />We Code.<br />We Create.</h1>
+          <p>Innovative developers crafting immersive digital experiences in space.</p>
+          <button class="btn" onclick="document.getElementById('about').scrollIntoView({behavior: 'smooth'})">EXPLORE PORTFOLIO &rarr;</button>
+        </div>
+        <div class="scroll-indicator">
+          <span>SCROLL DOWN</span>
+          <div class="mouse"></div>
+        </div>
+      </section>
+
+      <!-- About Us Section -->
+      <section id="about" class="section">
+        <div class="about-container">
+          <h2>ABOUT US</h2>
+          <div class="about-content">
+            <!-- 3D Carousel UI Overlays -->
+            <div class="carousel-container">
+              <button id="prev-member" class="arrow-btn">&lt;</button>
+              <div class="carousel-spacer"></div> <!-- Spacer for 3D elements -->
+              <button id="next-member" class="arrow-btn">&gt;</button>
+              
+              <div class="carousel-indicators">
+                <span class="dot active"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            </div>
+
+            <!-- Member Info Panel -->
+            <div class="member-info">
+              <h3 id="member-name">MEMBER 1</h3>
+              <p class="role" id="member-role">Frontend Developer</p>
+              
+              <ul class="details-list">
+                <li><strong>Education:</strong> <span id="member-education">Bachelor of Computer Science</span></li>
+                <li><strong>Career Interests:</strong> <span id="member-interests">Web Development, 3D Graphics</span></li>
+                <li><strong>Aspirations:</strong> <span id="member-aspirations">Build immersive experiences</span></li>
+                <li><strong>Achievements:</strong> <span id="member-achievements">Dean's List 2025</span></li>
+                <li><strong>Certifications:</strong> <span id="member-certs">AWS Certified Cloud Practitioner</span></li>
+              </ul>
+              
+              <button class="btn btn-outline" id="detail-btn">View Detail</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      
+    </main>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

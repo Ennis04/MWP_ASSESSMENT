@@ -1,0 +1,467 @@
+import './style.css';
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+import gsap from 'gsap';
+
+const isIndexPage = document.getElementById('index-page') !== null;
+const isMemberPage = document.getElementById('member-page') !== null;
+
+// ==========================================
+// 1. SCENE SETUP
+// ==========================================
+const canvas = document.querySelector('#bg');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 30;
+
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const cssRenderer = new CSS3DRenderer();
+cssRenderer.setSize(window.innerWidth, window.innerHeight);
+cssRenderer.domElement.style.position = 'fixed';
+cssRenderer.domElement.style.top = '0';
+cssRenderer.domElement.style.left = '0';
+cssRenderer.domElement.style.pointerEvents = 'none';
+cssRenderer.domElement.style.zIndex = '50';
+document.body.appendChild(cssRenderer.domElement);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(10, 20, 10);
+scene.add(dirLight);
+
+const orbitingLight = new THREE.PointLight(0x6a11ff, 4, 100);
+if (isIndexPage) scene.add(orbitingLight);
+
+// Add a small 3D Satellite model instead of a simple sphere
+const satellite = new THREE.Group();
+
+// Satellite Body
+const satBodyGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+const satBodyMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
+const satBody = new THREE.Mesh(satBodyGeo, satBodyMat);
+satellite.add(satBody);
+
+// Solar Panels
+const panelGeo = new THREE.BoxGeometry(2.5, 0.05, 0.8);
+const panelMat = new THREE.MeshStandardMaterial({ color: 0x1155ff, metalness: 0.6, roughness: 0.2 });
+const panels = new THREE.Mesh(panelGeo, panelMat);
+satellite.add(panels);
+
+// Glowing light bulb to indicate it's emitting the purple light
+const bulbGeo = new THREE.SphereGeometry(0.15, 8, 8);
+const bulbMat = new THREE.MeshBasicMaterial({ color: 0x9d5cff });
+const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+bulb.position.y = 0.4;
+satellite.add(bulb);
+
+orbitingLight.add(satellite);
+
+// Stars
+const starsGeo = new THREE.BufferGeometry();
+const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8 });
+const starCount = 1000;
+const positions = new Float32Array(starCount * 3);
+for(let i = 0; i < starCount * 3; i++) {
+  positions[i] = THREE.MathUtils.randFloatSpread(200);
+}
+starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const stars = new THREE.Points(starsGeo, starsMat);
+scene.add(stars);
+
+// Shared Base Material
+const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8, metalness: 0.2 });
+
+// ==========================================
+// GLOBALS FOR INDEX PAGE
+// ==========================================
+let planetGroup, planet, ring;
+let carouselGroup, cuboids = [];
+const memberCount = 4;
+
+if (isIndexPage) {
+  // Planet (Saturn)
+  planetGroup = new THREE.Group();
+  planetGroup.position.set(10, 0, 0);
+  
+  const textureLoader = new THREE.TextureLoader();
+  const saturnTexture = textureLoader.load('/saturn_texture.jpg');
+  
+  planet = new THREE.Mesh(
+    new THREE.SphereGeometry(7.5, 64, 64), 
+    new THREE.MeshStandardMaterial({ 
+      map: saturnTexture,
+      roughness: 0.8,
+      metalness: 0.1
+    })
+  );
+  planetGroup.add(planet);
+  
+  // Saturn's Realistic Rings
+  const ringsTexture = textureLoader.load('/saturn_rings.jpg');
+  const ringGeo = new THREE.PlaneGeometry(34, 34);
+  const ringMat = new THREE.MeshStandardMaterial({ 
+    map: ringsTexture,
+    alphaMap: ringsTexture, // Black parts of the image become transparent
+    transparent: true, 
+    side: THREE.DoubleSide,
+    roughness: 0.8,
+    metalness: 0.2,
+    depthWrite: false // Prevents transparency sorting issues
+  });
+  ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 2; // Perfectly flat on the equator
+  planetGroup.add(ring);
+  
+  // Tilt the entire Saturn system to match reference photo
+  planetGroup.rotation.x = Math.PI / 5;   // Tilt front edge down towards camera
+  planetGroup.rotation.z = -Math.PI / 6;  // Tilt from top-left to bottom-right
+  
+  if (isIndexPage) scene.add(planetGroup);
+
+  // Carousel
+  carouselGroup = new THREE.Group();
+  carouselGroup.position.set(-10, -50, -10); 
+  scene.add(carouselGroup);
+
+  const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 0.5, 32), baseMat);
+  baseMesh.position.y = -5;
+  carouselGroup.add(baseMesh);
+
+  const ringMeshBase = new THREE.Mesh(new THREE.TorusGeometry(9, 0.1, 16, 100), new THREE.MeshBasicMaterial({ color: 0x6a11ff }));
+  ringMeshBase.rotation.x = Math.PI / 2;
+  ringMeshBase.position.y = -4.7;
+  carouselGroup.add(ringMeshBase);
+
+  const colors = [0xff0055, 0x00ffcc, 0xffcc00, 0xaa3bff];
+  for (let i = 0; i < memberCount; i++) {
+    const mesh = new THREE.Mesh(new RoundedBoxGeometry(6.75, 9.75, 0.6, 4, 0.3), new THREE.MeshStandardMaterial({ color: colors[i], roughness: 0.2, metalness: 0.1 }));
+    carouselGroup.add(mesh);
+    cuboids.push(mesh);
+  }
+
+  function updateCarouselPositions(activeIndex, animate = false) {
+    cuboids.forEach((mesh, i) => {
+      const relativeIndex = (i - activeIndex + memberCount) % memberCount;
+      let targetX = 0, targetZ = 0, targetRotY = 0, targetScale = 1;
+      if (relativeIndex === 0) { targetX = 0; targetZ = 6; targetRotY = 0; targetScale = 1; }
+      else if (relativeIndex === 1) { targetX = 8.5; targetZ = 0; targetRotY = -Math.PI / 6; targetScale = 0.8; }
+      else if (relativeIndex === 3) { targetX = -8.5; targetZ = 0; targetRotY = Math.PI / 6; targetScale = 0.8; }
+      else { targetX = 0; targetZ = -6; targetRotY = 0; targetScale = 0.6; }
+      
+      if (animate) {
+        gsap.to(mesh.position, { x: targetX, z: targetZ, duration: 0.8, ease: "power2.out" });
+        gsap.to(mesh.rotation, { y: targetRotY, duration: 0.8, ease: "power2.out" });
+        gsap.to(mesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.8, ease: "power2.out" });
+      } else {
+        mesh.position.set(targetX, 0, targetZ);
+        mesh.rotation.y = targetRotY;
+        mesh.scale.set(targetScale, targetScale, targetScale);
+      }
+    });
+  }
+  updateCarouselPositions(0, false);
+
+  // Scroll Interaction
+  function moveCamera() {
+    const t = document.body.getBoundingClientRect().top;
+    const vh = window.innerHeight;
+    const progress = Math.min(Math.max(-t / vh, 0), 1);
+    planetGroup.position.y = progress * 30;
+    carouselGroup.position.y = -50 + (progress * 50);
+    camera.position.z = 30 - (progress * 18); 
+    carouselGroup.position.x = -7.5; 
+    
+    // Hide the satellite and fade the light when scrolling away from Landing Page
+    satellite.visible = progress < 0.1; 
+    orbitingLight.intensity = 4 * Math.max(1 - (progress * 3), 0); 
+  }
+  document.body.onscroll = moveCamera;
+  moveCamera();
+
+  // DOM Click Logic
+  let currentMemberIndex = 0;
+  const prevBtn = document.getElementById('prev-member');
+  const nextBtn = document.getElementById('next-member');
+  const dots = document.querySelectorAll('.dot');
+  const detailBtn = document.getElementById('detail-btn');
+
+  // We assign a specific link for each member
+  const indexMemberData = [
+    { name: "Ennis Lam Si Hoong", role: "Frontend Developer", link: "ennis.html", ed: "BSc Computer Science", int: "UI/UX, WebGL", asp: "Create immersive worlds", ach: "Best UI Award", cert: "React Certified" },
+    { name: "Liew Choon Pang", role: "Backend Developer", link: "liew.html", ed: "BA Digital Arts", int: "Modeling, Texturing", asp: "Lead Art Director", ach: "Top 10 ArtStation", cert: "Blender Master" },
+    { name: "Chua Lin Wei", role: "UI/UX Designer", link: "chua.html", ed: "MSc Software Eng", int: "APIs, Databases", asp: "System Architect", ach: "Hackathon Winner", cert: "AWS Solutions Architect" },
+    { name: "Tai Yi Tian", role: "Fullstack Developer", link: "tai.html", ed: "MBA, BSc IT", int: "Agile, Leadership", asp: "Tech Lead", ach: "Shipped 10+ Apps", cert: "Scrum Master" }
+  ];
+
+  function updateMemberInfo(index) {
+    const data = indexMemberData[index];
+    document.getElementById('member-name').innerText = data.name;
+    document.getElementById('member-role').innerText = data.role;
+    document.getElementById('member-education').innerText = data.ed;
+    document.getElementById('member-interests').innerText = data.int;
+    document.getElementById('member-aspirations').innerText = data.asp;
+    document.getElementById('member-achievements').innerText = data.ach;
+    document.getElementById('member-certs').innerText = data.cert;
+    
+    dots.forEach((dot, i) => {
+      if (i === index) dot.classList.add('active');
+      else dot.classList.remove('active');
+    });
+  }
+
+  function rotateCarousel(direction) {
+    if (direction === 'next') currentMemberIndex = (currentMemberIndex + 1) % memberCount;
+    else currentMemberIndex = (currentMemberIndex - 1 + memberCount) % memberCount;
+    updateCarouselPositions(currentMemberIndex, true);
+    setTimeout(() => updateMemberInfo(currentMemberIndex), 300);
+  }
+
+  if(prevBtn) prevBtn.addEventListener('click', () => rotateCarousel('prev'));
+  if(nextBtn) nextBtn.addEventListener('click', () => rotateCarousel('next'));
+  dots.forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+      currentMemberIndex = index;
+      updateCarouselPositions(currentMemberIndex, true);
+      updateMemberInfo(currentMemberIndex);
+    });
+  });
+
+  if(detailBtn) {
+    detailBtn.addEventListener('click', () => {
+      window.location.href = indexMemberData[currentMemberIndex].link;
+    });
+  }
+  
+  updateMemberInfo(0);
+}
+
+// ==========================================
+// GLOBALS FOR MEMBER PAGE
+// ==========================================
+let skillsGroup, globe, skillObjects = [];
+let projectsGroup, projectCuboids = [];
+let projectCount = 0;
+
+if (isMemberPage && window.MEMBER_DATA) {
+  const mData = window.MEMBER_DATA;
+  
+  // Update header automatically
+  const nameEl = document.getElementById('detail-name');
+  if(nameEl) nameEl.innerText = mData.name;
+  
+  const roleEl = document.getElementById('detail-role');
+  if(roleEl) roleEl.innerText = mData.role;
+
+  // Skills Scene
+  skillsGroup = new THREE.Group();
+  scene.add(skillsGroup);
+
+  globe = new THREE.Mesh(new THREE.IcosahedronGeometry(7.5, 2), new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true }));
+  skillsGroup.add(globe);
+
+  const skillsBase = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.5, 32), baseMat);
+  skillsBase.position.y = -10;
+  skillsGroup.add(skillsBase);
+  const skillsRing = new THREE.Mesh(new THREE.TorusGeometry(10, 0.1, 16, 100), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+  skillsRing.rotation.x = Math.PI / 2;
+  skillsRing.position.y = -9.7;
+  skillsGroup.add(skillsRing);
+
+  const labelsContainer = document.getElementById('skills-labels');
+  const skillsList = mData.skills || [];
+  
+  const hexPositions = [
+    { x: -14, y: 4, z: 0 }, { x: -16, y: -1, z: 0 }, { x: -14, y: -6, z: 0 },
+    { x: 14, y: 4, z: 0 }, { x: 16, y: -1, z: 0 }, { x: 14, y: -6, z: 0 }
+  ];
+
+  for (let i = 0; i < Math.min(skillsList.length, 6); i++) {
+    const hexMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.1 }));
+    hexMesh.rotation.x = Math.PI / 2;
+    hexMesh.rotation.y = Math.PI / 6; 
+    const pos = hexPositions[i];
+    hexMesh.position.set(pos.x, pos.y, pos.z);
+    skillsGroup.add(hexMesh);
+    
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 });
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(pos.x, pos.y, pos.z)]);
+    skillsGroup.add(new THREE.Line(lineGeo, lineMat));
+    
+    const labelEl = document.createElement('div');
+    labelEl.className = 'skill-label';
+    labelEl.innerText = skillsList[i];
+    if(labelsContainer) labelsContainer.appendChild(labelEl);
+    
+    skillObjects.push({ mesh: hexMesh, labelEl: labelEl, baseY: pos.y });
+  }
+
+  // Projects Scene
+  projectsGroup = new THREE.Group();
+  scene.add(projectsGroup);
+
+  const projectsData = mData.projects || [];
+  projectCount = projectsData.length;
+  const projectColors = [0x1166ff, 0xff1166, 0x11ff66, 0xffaa11, 0xaa11ff];
+
+  const projectsBase = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 0.5, 32), baseMat);
+  projectsBase.position.y = -5;
+  projectsGroup.add(projectsBase);
+
+  const projectsRing = new THREE.Mesh(new THREE.TorusGeometry(9, 0.1, 16, 100), new THREE.MeshBasicMaterial({ color: 0x6a11ff }));
+  projectsRing.rotation.x = Math.PI / 2;
+  projectsRing.position.y = -4.7;
+  projectsGroup.add(projectsRing);
+
+  for (let i = 0; i < projectCount; i++) {
+    const mesh = new THREE.Mesh(new RoundedBoxGeometry(6.75, 9.75, 0.6, 4, 0.3), new THREE.MeshStandardMaterial({ color: projectColors[i % projectColors.length], roughness: 0.2, metalness: 0.1 }));
+    
+    const cardContent = document.createElement('div');
+    cardContent.className = 'project-card-css3d';
+    cardContent.style.pointerEvents = 'auto';
+    
+    const data = projectsData[i];
+    cardContent.innerHTML = `
+      <div class="project-card-media"><span>🖼️</span></div>
+      <div class="project-card-text">
+        <h3>${data.title}</h3>
+        <p>${data.desc}</p>
+        <button class="card-btn view-details-btn">VIEW DETAILS</button>
+      </div>
+    `;
+    
+    const cssObject = new CSS3DObject(cardContent);
+    cssObject.scale.set(0.021, 0.021, 0.021);
+    cssObject.position.set(0, 0, 0.31);
+    mesh.add(cssObject);
+    
+    const btn = cardContent.querySelector('.view-details-btn');
+    btn.addEventListener('click', () => {
+      document.getElementById('modal-title').innerText = data.title;
+      document.getElementById('modal-desc').innerText = data.desc;
+      const techContainer = document.getElementById('modal-tech');
+      techContainer.innerHTML = '';
+      data.tech.forEach(t => {
+        const span = document.createElement('span');
+        span.innerText = t;
+        techContainer.appendChild(span);
+      });
+      document.getElementById('project-modal').classList.remove('hidden');
+    });
+
+    projectsGroup.add(mesh);
+    projectCuboids.push(mesh);
+  }
+
+  function updateProjectsPositions(activeIndex, animate = false) {
+    if(projectCount === 0) return;
+    projectCuboids.forEach((mesh, i) => {
+      const relativeIndex = (i - activeIndex + projectCount) % projectCount;
+      let targetX = 0, targetZ = 0, targetRotY = 0, targetScale = 1;
+      
+      if (relativeIndex === 0) { targetX = 0; targetZ = 12; targetRotY = 0; targetScale = 1.6; } 
+      else if (relativeIndex === 1) { targetX = 10; targetZ = 0; targetRotY = -Math.PI / 6; targetScale = 0.8; } 
+      else if (relativeIndex === projectCount - 1) { targetX = -10; targetZ = 0; targetRotY = Math.PI / 6; targetScale = 0.8; } 
+      else { targetX = 0; targetZ = -6; targetRotY = 0; targetScale = 0.6; }
+      
+      if (animate) {
+        gsap.to(mesh.position, { x: targetX, z: targetZ, duration: 0.8, ease: "power2.out" });
+        gsap.to(mesh.rotation, { y: targetRotY, duration: 0.8, ease: "power2.out" });
+        gsap.to(mesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.8, ease: "power2.out" });
+      } else {
+        mesh.position.set(targetX, 0, targetZ);
+        mesh.rotation.y = targetRotY;
+        mesh.scale.set(targetScale, targetScale, targetScale);
+      }
+    });
+  }
+  updateProjectsPositions(0, false);
+
+  let currentProjectIndex = 0;
+  const prevProjBtn = document.getElementById('prev-project');
+  const nextProjBtn = document.getElementById('next-project');
+
+  function rotateProjects(direction) {
+    if(projectCount === 0) return;
+    if (direction === 'next') currentProjectIndex = (currentProjectIndex + 1) % projectCount;
+    else currentProjectIndex = (currentProjectIndex - 1 + projectCount) % projectCount;
+    updateProjectsPositions(currentProjectIndex, true);
+  }
+
+  if(prevProjBtn) prevProjBtn.addEventListener('click', () => rotateProjects('prev'));
+  if(nextProjBtn) nextProjBtn.addEventListener('click', () => rotateProjects('next'));
+
+  const modal = document.getElementById('project-modal');
+  const closeModalBtn = document.getElementById('close-modal-btn');
+  if(closeModalBtn) closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+}
+
+// ==========================================
+// ANIMATION LOOP
+// ==========================================
+function animate() {
+  requestAnimationFrame(animate);
+
+  stars.rotation.y += 0.0005;
+  stars.rotation.x += 0.0002;
+
+  // Tighter orbit centered explicitly on Saturn
+  const time = Date.now() * 0.0015;
+  orbitingLight.position.x = 10 + Math.cos(time) * 16; 
+  orbitingLight.position.z = Math.sin(time) * 16; 
+  orbitingLight.position.y = Math.sin(time * 0.5) * 6;
+  
+  // Make the satellite slowly tumble
+  satellite.rotation.x += 0.01;
+  satellite.rotation.y += 0.015;
+  satellite.rotation.z += 0.005;
+
+  if (isIndexPage && planetGroup && carouselGroup) {
+    planet.rotation.y += 0.005;
+    ring.rotation.z -= 0.001;
+    carouselGroup.position.y += Math.sin(Date.now() * 0.001) * 0.01;
+  }
+
+  if (isMemberPage && skillsGroup && projectsGroup) {
+    const rect = document.getElementById('member-skills').getBoundingClientRect();
+    const viewportCenter = window.innerHeight / 2;
+    const spacerCenter = rect.top + (rect.height / 2) - 40; 
+    const unitPerPixel = (2 * 30 * Math.tan(THREE.MathUtils.degToRad(75 / 2))) / window.innerHeight;
+    
+    skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
+    globe.rotation.y += 0.005;
+    globe.rotation.x += 0.002;
+    
+    skillObjects.forEach((obj, i) => {
+      obj.mesh.position.y = obj.baseY + Math.sin(Date.now() * 0.002 + i) * 0.5;
+      const vector = obj.mesh.position.clone();
+      vector.applyMatrix4(skillsGroup.matrixWorld);
+      vector.project(camera);
+      const x = (vector.x * .5 + .5) * window.innerWidth;
+      const y = (vector.y * -.5 + .5) * window.innerHeight;
+      obj.labelEl.style.left = `${x}px`;
+      obj.labelEl.style.top = `${y}px`;
+    });
+
+    const pRect = document.getElementById('projects-spacer').getBoundingClientRect();
+    const pSpacerCenter = pRect.top + (pRect.height / 2); 
+    projectsGroup.position.y = (viewportCenter - pSpacerCenter) * unitPerPixel;
+  }
+
+  renderer.render(scene, camera);
+  cssRenderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  cssRenderer.setSize(window.innerWidth, window.innerHeight);
+});
