@@ -97,7 +97,7 @@ const memberCount = 4;
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Software Engineer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "UI/UX, Web Development, IoT", asp: "Create immersive worlds", ach: "ROBOCON MALAYSIA 2025 – Champion & Best Engineering Award", cert: "Anugerah Insan Terbilang Negeri Sembilan", model: "/ennis/bananacat.glb", modelName: "Banana Cat", modelDescription: "Banana Cat is a famous meme in the Intenet. The reason I choose it as my model is that it is cute and always positve and energetic." },
   { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023", cert: "AWS Cloud Practitioner", model: "/liew/panda_head_meme.glb", modelName: "Panda Head Meme", modelDescription: "A 3D panda meme model featured in Liew's portfolio." },
-  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with banana-themed interaction and sound." },
+  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "Minions are a movie character who loves bananas. They talk in a funny and gibberish language making them cute and simple." },
   { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Tai's animated Oiia cat model with its original sound effect." }
 ];
 
@@ -483,6 +483,8 @@ if (isIndexPage) {
   const detailItems = Array.from(document.querySelectorAll('.details-list li'));
   const detailLabels = ['Education:', 'Career Interests:', 'Aspirations:', 'Achievements:', 'Certifications:'];
   const memberInfoPanel = document.querySelector('.member-info');
+  const flipHint = document.getElementById('member-flip-hint');
+  const flipHintText = flipHint?.querySelector('.flip-hint-text');
   const indexCardRaycaster = new THREE.Raycaster();
   const indexCardPointer = new THREE.Vector2();
   let modelViewIndex = null;
@@ -492,6 +494,12 @@ if (isIndexPage) {
     const isModelView = modelViewIndex === index;
 
     memberInfoPanel?.classList.toggle('is-model-view', isModelView);
+    flipHint?.classList.toggle('is-model-view', isModelView);
+    if (flipHintText) {
+      flipHintText.textContent = isModelView
+        ? 'Click the frame to return to the portrait'
+        : 'Click the frame to view the 3D model';
+    }
 
     detailItems.forEach((item, itemIndex) => {
       item.hidden = false;
