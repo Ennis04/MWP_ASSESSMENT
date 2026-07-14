@@ -2,6 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import gsap from 'gsap';
 
 const isIndexPage = document.getElementById('index-page') !== null;
@@ -17,8 +18,10 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 camera.position.z = 30;
 
 const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
 
 const cssRenderer = new CSS3DRenderer();
 cssRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -29,12 +32,17 @@ cssRenderer.domElement.style.pointerEvents = 'none';
 cssRenderer.domElement.style.zIndex = '50';
 document.body.appendChild(cssRenderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(10, 20, 10);
+dirLight.castShadow = true;
 scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0xffd0a0, 0.6);
+fillLight.position.set(-10, 5, -5);
+scene.add(fillLight);
 
 const orbitingLight = new THREE.PointLight(0x6a11ff, 4, 100);
 if (isIndexPage) scene.add(orbitingLight);
@@ -81,49 +89,85 @@ const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8
 // ==========================================
 // GLOBALS FOR INDEX PAGE
 // ==========================================
-let planetGroup, planet, ring;
+let dogGroup, dogMixer, dogBaseY = 0, scrollProgress = 0;
+let targetRotationY = -0.8;
+let isDragging = false;
+let previousMouseX = 0;
+const animationClock = new THREE.Clock();
 let carouselGroup, cuboids = [];
 const memberCount = 4;
 
 if (isIndexPage) {
-  // Planet (Saturn)
-  planetGroup = new THREE.Group();
-  planetGroup.position.set(10, 0, 0);
-  
+  // Load the dog textures with correct orientation
+  // The GLB uses the KHR_materials_pbrSpecularGlossiness extension so we manually
+  // apply the embedded textures from the supplied texture folder.
   const textureLoader = new THREE.TextureLoader();
-  const saturnTexture = textureLoader.load('/saturn_texture.jpg');
-  
-  planet = new THREE.Mesh(
-    new THREE.SphereGeometry(7.5, 64, 64), 
-    new THREE.MeshStandardMaterial({ 
-      map: saturnTexture,
-      roughness: 0.8,
-      metalness: 0.1
-    })
-  );
-  planetGroup.add(planet);
-  
-  // Saturn's Realistic Rings
-  const ringsTexture = textureLoader.load('/saturn_rings.jpg');
-  const ringGeo = new THREE.PlaneGeometry(34, 34);
-  const ringMat = new THREE.MeshStandardMaterial({ 
-    map: ringsTexture,
-    alphaMap: ringsTexture, // Black parts of the image become transparent
-    transparent: true, 
-    side: THREE.DoubleSide,
+
+  const dogTexture = textureLoader.load('/baby-dog/textures/gltf_embedded_0.png');
+  dogTexture.colorSpace = THREE.SRGBColorSpace;
+  dogTexture.flipY = true;
+
+  const dogNormal = textureLoader.load('/baby-dog/textures/gltf_embedded_2.png');
+  dogNormal.flipY = true;
+
+  const dogAO = textureLoader.load('/baby-dog/textures/gltf_embedded_3@channels=R.png');
+  dogAO.flipY = true;
+
+  const dogMaterial = new THREE.MeshStandardMaterial({
+    map: dogTexture,
+    normalMap: dogNormal,
+    aoMap: dogAO,
     roughness: 0.8,
-    metalness: 0.2,
-    depthWrite: false // Prevents transparency sorting issues
+    metalness: 0.1
   });
-  ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.rotation.x = Math.PI / 2; // Perfectly flat on the equator
-  planetGroup.add(ring);
-  
-  // Tilt the entire Saturn system to match reference photo
-  planetGroup.rotation.x = Math.PI / 5;   // Tilt front edge down towards camera
-  planetGroup.rotation.z = -Math.PI / 6;  // Tilt from top-left to bottom-right
-  
-  if (isIndexPage) scene.add(planetGroup);
+
+  // The dog model is intentionally loaded from public/ so it can be swapped without
+  // rebuilding the site. Model: public/baby-dog/source/baby dog.glb.
+  const dogLoader = new GLTFLoader();
+  dogLoader.load(
+    '/baby-dog/source/baby%20dog.glb',
+    (gltf) => {
+      dogGroup = gltf.scene;
+      dogGroup.position.set(0, 0, 0);
+
+      // Normalise any model dimensions so different exports sit consistently in the scene.
+      const bounds = new THREE.Box3().setFromObject(dogGroup);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      // Make the dog bigger and center it on the right side of the viewport.
+      // Scale 22 fills the right panel nicely; x=11 places it at the right-half centre.
+      const scale = 22 / Math.max(size.x, size.y, size.z);
+      dogGroup.scale.setScalar(scale);
+      // Center horizontally at x=11 (right side), vertically centre the model in view
+      const modelHeight = size.y * scale;
+      dogGroup.position.set(11 - center.x * scale, -center.y * scale, -center.z * scale);
+      dogGroup.rotation.y = targetRotationY;
+      dogBaseY = dogGroup.position.y;
+
+      dogGroup.traverse((node) => {
+        if (!node.isMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+        node.material = dogMaterial;
+      });
+
+      scene.add(dogGroup);
+
+      // Play the standing skeletal animation
+      if (gltf.animations && gltf.animations.length > 0) {
+        dogMixer = new THREE.AnimationMixer(dogGroup);
+        const standingClip = gltf.animations.find(a => a.name === 'standing') || gltf.animations[0];
+        const action = dogMixer.clipAction(standingClip);
+        action.play();
+      }
+    },
+    undefined,
+    () => {
+      // Keep the lightweight in-scene fallback visible during local development if
+      // the asset has not been copied into public yet.
+      console.warn('Dog model not found: check public/baby-dog/source/baby dog.glb.');
+    }
+  );
 
   // Carousel
   carouselGroup = new THREE.Group();
@@ -173,7 +217,8 @@ if (isIndexPage) {
     const t = document.body.getBoundingClientRect().top;
     const vh = window.innerHeight;
     const progress = Math.min(Math.max(-t / vh, 0), 1);
-    planetGroup.position.y = progress * 30;
+    scrollProgress = progress;
+    if (dogGroup) dogGroup.position.y = dogBaseY + progress * 30;
     carouselGroup.position.y = -50 + (progress * 50);
     camera.position.z = 30 - (progress * 18); 
     carouselGroup.position.x = -7.5; 
@@ -240,12 +285,53 @@ if (isIndexPage) {
   }
   
   updateMemberInfo(0);
+
+  // --- Dog 360-degree Drag Rotation Controls ---
+  window.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    previousMouseX = e.clientX;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging || !dogGroup) return;
+    const deltaX = e.clientX - previousMouseX;
+    previousMouseX = e.clientX;
+    targetRotationY += deltaX * 0.007;
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  window.addEventListener('mouseleave', () => {
+    isDragging = false;
+  });
+
+  // Touch controls for mobile support
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 0) {
+      isDragging = true;
+      previousMouseX = e.touches[0].clientX;
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!isDragging || !dogGroup || e.touches.length === 0) return;
+    const deltaX = e.touches[0].clientX - previousMouseX;
+    previousMouseX = e.touches[0].clientX;
+    targetRotationY += deltaX * 0.007;
+  }, { passive: true });
+
+  window.addEventListener('touchend', () => {
+    isDragging = false;
+  });
 }
 
 // ==========================================
 // GLOBALS FOR MEMBER PAGE
 // ==========================================
 let skillsGroup, globe, skillObjects = [];
+let memberModelGroup = null, memberModelMixer = null;
 let projectsGroup, projectCuboids = [];
 let projectCount = 0;
 
@@ -263,8 +349,41 @@ if (isMemberPage && window.MEMBER_DATA) {
   skillsGroup = new THREE.Group();
   scene.add(skillsGroup);
 
-  globe = new THREE.Mesh(new THREE.IcosahedronGeometry(7.5, 2), new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true }));
-  skillsGroup.add(globe);
+  // If this member page supplies a custom GLB model, load it in place of the globe.
+  if (mData.model) {
+    const memberLoader = new GLTFLoader();
+    memberLoader.load(
+      mData.model,
+      (gltf) => {
+        memberModelGroup = gltf.scene;
+
+        // Auto-scale so the tallest axis fits within ~12 units
+        const mBounds = new THREE.Box3().setFromObject(memberModelGroup);
+        const mSize   = mBounds.getSize(new THREE.Vector3());
+        const mCenter = mBounds.getCenter(new THREE.Vector3());
+        const mScale  = 12 / Math.max(mSize.x, mSize.y, mSize.z);
+        memberModelGroup.scale.setScalar(mScale);
+        // Centre the model at the origin of skillsGroup
+        memberModelGroup.position.set(-mCenter.x * mScale, -mCenter.y * mScale, -mCenter.z * mScale);
+
+        skillsGroup.add(memberModelGroup);
+
+        // Play embedded animations if any
+        if (gltf.animations && gltf.animations.length > 0) {
+          memberModelMixer = new THREE.AnimationMixer(memberModelGroup);
+          gltf.animations.forEach(clip => memberModelMixer.clipAction(clip).play());
+        }
+      },
+      undefined,
+      (err) => console.warn('Member model failed to load:', err)
+    );
+    // Invisible placeholder so the skills lines still have a centre reference
+    globe = new THREE.Mesh(new THREE.SphereGeometry(0.01), new THREE.MeshBasicMaterial({ visible: false }));
+    skillsGroup.add(globe);
+  } else {
+    globe = new THREE.Mesh(new THREE.IcosahedronGeometry(7.5, 2), new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true }));
+    skillsGroup.add(globe);
+  }
 
   const skillsBase = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.5, 32), baseMat);
   skillsBase.position.y = -10;
@@ -407,11 +526,12 @@ if (isMemberPage && window.MEMBER_DATA) {
 // ==========================================
 function animate() {
   requestAnimationFrame(animate);
+  const delta = Math.min(animationClock.getDelta(), 0.05);
 
   stars.rotation.y += 0.0005;
   stars.rotation.x += 0.0002;
 
-  // Tighter orbit centered explicitly on Saturn
+  // Orbiting satellite light
   const time = Date.now() * 0.0015;
   orbitingLight.position.x = 10 + Math.cos(time) * 16; 
   orbitingLight.position.z = Math.sin(time) * 16; 
@@ -422,11 +542,24 @@ function animate() {
   satellite.rotation.y += 0.015;
   satellite.rotation.z += 0.005;
 
-  if (isIndexPage && planetGroup && carouselGroup) {
-    planet.rotation.y += 0.005;
-    ring.rotation.z -= 0.001;
+  if (isIndexPage && carouselGroup) {
     carouselGroup.position.y += Math.sin(Date.now() * 0.001) * 0.01;
+
+    if (dogGroup) {
+      // Gentle idle breathing motion
+      const dogTime = animationClock.elapsedTime;
+      dogGroup.position.y = dogBaseY + scrollProgress * 30 + Math.sin(dogTime * 1.2) * 0.06;
+
+      // Smoothly lerp rotation toward the target set by mouse drag
+      dogGroup.rotation.y += (targetRotationY - dogGroup.rotation.y) * 0.08;
+    }
   }
+
+  // Update the skeletal animation mixer
+  if (dogMixer) dogMixer.update(delta);
+
+  // Update member page custom model mixer (e.g. Maxwell the cat)
+  if (memberModelMixer) memberModelMixer.update(delta);
 
   if (isMemberPage && skillsGroup && projectsGroup) {
     const rect = document.getElementById('member-skills').getBoundingClientRect();
@@ -435,8 +568,16 @@ function animate() {
     const unitPerPixel = (2 * 30 * Math.tan(THREE.MathUtils.degToRad(75 / 2))) / window.innerHeight;
     
     skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
-    globe.rotation.y += 0.005;
-    globe.rotation.x += 0.002;
+
+    // Animate the centre model: spin + gentle bob
+    if (memberModelGroup) {
+      memberModelGroup.rotation.y += 0.008;
+      const bobTime = animationClock.elapsedTime;
+      memberModelGroup.position.y = -0.5 + Math.sin(bobTime * 1.8) * 0.8;
+    } else {
+      globe.rotation.y += 0.005;
+      globe.rotation.x += 0.002;
+    }
     
     skillObjects.forEach((obj, i) => {
       obj.mesh.position.y = obj.baseY + Math.sin(Date.now() * 0.002 + i) * 0.5;
@@ -463,5 +604,6 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
 });
