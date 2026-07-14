@@ -6,6 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/style.css" />
     <title>Tai Yi Tian - Portfolio</title>
+    <style>
+      .modal-right {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+      }
+      #modal-title {
+        font-size: 2.2rem !important;
+        line-height: 1.2 !important;
+        margin-bottom: 1rem !important;
+        text-align: left !important;
+        background: linear-gradient(135deg, #ffffff, #b886ff) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        width: auto !important;
+      }
+      #modal-desc {
+        font-size: 1.05rem !important;
+        line-height: 1.6 !important;
+        text-align: left !important;
+        color: rgba(255, 255, 255, 0.7) !important;
+        margin-bottom: 2rem !important;
+      }
+    </style>
   </head>
   <body id="member-page" class="ennis-page">
     <canvas id="bg"></canvas>
@@ -17,13 +41,15 @@
         name: "Tai Yi Tian",
         role: "Bachelor of Computer Science (Graphics and Multimedia Software)",
         model: "/tai/oiiaioooooiai_cat.glb",
+        modelSize: 23,
+        modelOffsetY: -1,
         modelSound: "/tai/oiia-oiia-sound.mp3",
         skills: ['VUE.JS', 'c++', 'Python', 'Java', 'Unity', 'PowerBI'],
         projects: [
-          { title: "Timetable Management System for Faculty of Computing", desc: "This is a project from Application Development Course. It is foucs on visualization of data.", image: "/tai/FC_Timetable.png",tech: ["Vue.js", "TypeScript", "Chart.js"] },
-          { title: "Real-time Chat", desc: "A highly scalable WebSocket-based communication platform.", tech: ["TypeScript", "Socket.io", "Redis"] },
-          { title: "3D Product Viewer", desc: "Interactive 3D viewer for e-commerce products.", tech: ["Three.js", "WebGL", "Vue.js"] },
-          { title: "GraphQL API", desc: "Unified GraphQL layer combining multiple REST microservices.", tech: ["GraphQL", "Apollo Server", "TypeScript"] }
+          { title: "Food Ordering System", desc: "This is a project from Web Programming Course. It have three types of users which have different interface.", image: "/tai/FoodOrderingSystem.png", video: "/tai/FoodOrderingSystem.mov",tech: ["XAMPP", "PHP", "MySQL"], demoUrl: "https://github.com/taiyitian1201/Online-Food-Ordering-System" },
+          { title: "Timetable Management System for Faculty of Computing", desc: "This is a project from Application Development Course. It is foucs on visualization of data.", image: "/tai/FC_Timetable.png", video: "/tai/FC_Timetable.mov",tech: ["Vue.js", "TypeScript", "Chart.js"], demoUrl: "https://github.com/taiyitian1201/fc-ttms" },
+          { title: "iPixelo - Image Editor", desc: "This is a project from Image Processing Course. It is using OpenCV as the algorithm library.", image: "/tai/iPixelo.png", video: "/tai/iPixelo.mov",tech: ["Python", "OpenCV", "PyQt6"], demoUrl: "https://github.com/taiyitian1201/iPixelo-ImageEditingTool" },
+          { title: "AeroFly X1", desc: "This is an interactive website built using react.js and three.js. The website is about a drone, AeroFly X1. The websites shows the features and the specification of the drone.", image: "/tai/drone.png", video: "/tai/drone.mov",tech: ["JAVASCRIPT", "React.js", "Three.js"], demoUrl: "https://github.com/taiyitian1201/MWP-GROUP-PROJECT_PRODUCT" }
         ]
       };
     </script>
@@ -31,8 +57,8 @@
     <main id="app">
       <nav class="ennis-nav">
         <a href="index.html" class="logo ennis-logo" aria-label="Back to group portfolio">
-          <span class="logo-monogram">TY</span>
-          <span class="logo-copy">TAI <small>PORTFOLIO</small></span>
+          <span class="logo-monogram">YT</span>
+          <span class="logo-copy">TIAN<small>PORTFOLIO</small></span>
         </a>
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
@@ -49,8 +75,9 @@
             <h1 id="detail-name">Tai Yi Tian</h1>
             <p id="detail-role" class="hero-role">Bachelor of Computer Science (Graphics and Multimedia Software)</p>
             <p class="hero-intro">
-              I build complete digital products from responsive interfaces to scalable APIs,
-              connecting every layer into one cohesive experience.
+              As a passionate Computer Science student specializing in Graphics and Multimedia, 
+              I blend my skills in C++, Python, and Unity with a deep fascination for Image Processing 
+              and AI to create immersive and intelligent digital experiences.
             </p>
             <div class="hero-actions">
               <a class="btn hero-primary" href="#member-projects">Explore my work <span>↘</span></a>
@@ -59,7 +86,6 @@
             <div class="hero-facts" aria-label="Profile highlights">
               <div><strong>04</strong><span>Featured projects</span></div>
               <div><strong>06</strong><span>Core skills</span></div>
-              <div><strong>360°</strong><span>Full-stack focus</span></div>
             </div>
           </div>
 
@@ -118,8 +144,8 @@
           <div class="contact-intro">
             <p>Have an idea, collaboration or opportunity in mind? I’d love to hear about it.</p>
             <div class="contact-links">
-              <a href="mailto:tai@example.com"><span>Email</span><strong>tai@example.com</strong><i>↗</i></a>
-              <a href="https://linkedin.com/in/tai" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/tai</strong><i>↗</i></a>
+              <a href="mailto:taitian@graduate.utm.my"><span>Email</span><strong>taitian@graduate.utm.my</strong><i>↗</i></a>
+              <a href="https://www.linkedin.com/in/taiyitian/" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/taiyitian/</strong><i>↗</i></a>
             </div>
           </div>
 
@@ -158,7 +184,7 @@
             <p id="modal-desc">Brief description.</p>
             <h3 class="modal-tech-title">TECHNOLOGIES USED</h3>
             <div class="tech-stack" id="modal-tech"></div>
-            <button class="btn modal-demo-btn">LIVE DEMO ↗</button>
+            <a id="modal-demo-link" class="btn modal-demo-btn" target="_blank" href="#">GITHUB ↗</a>
           </div>
         </div>
       </div>

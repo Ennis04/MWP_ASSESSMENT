@@ -273,6 +273,26 @@ if (isIndexPage) {
     (error) => console.error('Unable to load the landing-page dog model.', error)
   );
 
+  // Mouse Dragging Logic for Dog Model
+  let isDraggingDog = false;
+  let previousMousePosition = { x: 0, y: 0 };
+
+  window.addEventListener('mousedown', (e) => {
+    isDraggingDog = true;
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDraggingDog && planetGroup) {
+      const deltaX = e.clientX - previousMousePosition.x;
+      planetGroup.rotation.y += deltaX * 0.01;
+    }
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('mouseup', () => isDraggingDog = false);
+  window.addEventListener('mouseleave', () => isDraggingDog = false);
+
   // Carousel
   carouselGroup = new THREE.Group();
   carouselGroup.position.set(-10, -50, -10); 
