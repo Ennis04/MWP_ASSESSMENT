@@ -127,6 +127,9 @@ p {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px var(--accent-glow);
+  text-decoration: none;
+  text-align: center;
+  display: inline-block;
 }
 
 .btn:hover {

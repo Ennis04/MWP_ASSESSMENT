@@ -701,6 +701,12 @@ if (isMemberPage && window.MEMBER_DATA) {
         mediaContainer.innerHTML = `<div class="modal-media-placeholder"><span class="play-icon">▶</span></div>`;
       }
 
+      const githubBtn = document.getElementById('modal-github-btn');
+      if (githubBtn) {
+        githubBtn.href = data.github ? data.github : '#';
+        githubBtn.style.display = 'inline-block';
+      }
+
       document.getElementById('project-modal').classList.remove('hidden');
     });
 
