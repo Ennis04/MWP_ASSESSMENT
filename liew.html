@@ -15,12 +15,16 @@
       window.MEMBER_DATA = {
         name: "Liew Choon Pang",
         role: "Graphics and Multimedia Software",
+        model: "/panda_head_meme.glb",
+        modelSize: 12,
+        modelOffsetY: -0.5,
+        modelRotationY: 0,
         skills: ['Python', 'Java', 'Node.js', 'PowerBi', 'Three.js', 'Unity'],
         projects: [
-          { title: "API Gateway", desc: "A high-performance API gateway handling millions of requests per second.", tech: ["Go", "Redis", "Docker"] },
-          { title: "Data Pipeline", desc: "Real-time data processing pipeline for astronomical telemetry.", tech: ["Python", "Apache Kafka", "AWS"] },
-          { title: "Auth Microservice", desc: "Secure authentication service with OAuth2 and JWT integration.", tech: ["Node.js", "Express", "PostgreSQL"] },
-          { title: "Serverless Analytics", desc: "Serverless backend architecture for processing user analytics.", tech: ["AWS Lambda", "DynamoDB", "Python"] }
+          { title: "Hand Gesture Recognition", desc: "A unity hand gesture recognition system using Leap Motion Controller for intuitive interaction.", tech: ["Unity", "Leap motion", "C#"], thumbnail: "/videos/hand_thumbnail.png", video: "/videos/hand.mp4" },
+          { title: "Voting Website", desc: "Designed and developed a local interactive website for voting.", tech: ["HTML", "CSS", "JavaScript", "PHP", "MySQL", "XAMPP"], thumbnail: "/videos/vote_thumbnail.png", video: "/videos/web.mp4" },
+          { title: "VR Application", desc: "Implemented VR applications using Google Cardboard, focusing on mobile-based rendering optimization", tech: ["Unity", "C#", "Mobile"], thumbnail: "/videos/vr_thumbnail.png", video: "/videos/vr.mp4" },
+          { title: "Interactive OpenSceneGraph", desc: "A functional 3D application by integrating OpenFrameworks with OpenSceneGraph", tech: ["C++", "OpenFrameworks"], thumbnail: "/videos/osg_thumbnail.png", video: "/videos/osg.mp4" }
         ]
       };
     </script>
@@ -42,7 +46,7 @@
       <section class="ennis-hero" aria-labelledby="detail-name">
         <div class="hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow"><span></span> BACKEND DEVELOPER · SYSTEMS BUILDER</p>
+            <p class="eyebrow"><span></span> UI/UX DESIGNER · WEB DEVELOPER</p>
             <h1 id="detail-name">Liew Choon Pang</h1>
             <p id="detail-role" class="hero-role">Backend Developer</p>
             <p class="hero-intro">
@@ -55,7 +59,7 @@
             <div class="hero-facts" aria-label="Profile highlights">
               <div><strong>04</strong><span>Featured projects</span></div>
               <div><strong>06</strong><span>Core skills</span></div>
-              <div><strong>API</strong><span>Cloud systems focus</span></div>
+              <div><strong>UI/UX</strong><span>Design &amp; web focus</span></div>
             </div>
           </div>
 
@@ -78,9 +82,9 @@
         <header class="section-heading">
           <div>
             <p class="section-kicker">01 · CAPABILITIES</p>
-            <h2>Skills in orbit</h2>
+            <h2>Skills</h2>
           </div>
-          <p>A growing toolkit for crafting fast, accessible and memorable digital products.</p>
+          <p>Dedicated in data visualisation, Interactive Web development, and real time computer graphics</p>
         </header>
         <div class="showcase-stage skills-stage">
           <div class="stage-grid" aria-hidden="true"></div>
@@ -92,9 +96,9 @@
         <header class="section-heading">
           <div>
             <p class="section-kicker">02 · SELECTED WORK</p>
-            <h2>Projects with purpose</h2>
+            <h2>Projects</h2>
           </div>
-          <p>Use the controls to explore experiments across WebGL, product design and development.</p>
+          <p>Some of the projects showcases</p>
         </header>
         <div class="project-gallery-layout">
           <div class="project-carousel-container">
@@ -116,8 +120,8 @@
           <div class="contact-intro">
             <p>Have an idea, collaboration or opportunity in mind? I’d love to hear about it.</p>
             <div class="contact-links">
-              <a href="mailto:liew@example.com"><span>Email</span><strong>liew@example.com</strong><i>↗</i></a>
-              <a href="https://linkedin.com/in/liew" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/liew</strong><i>↗</i></a>
+              <a href="mailto:liewpang@graduate.utm.my"><span>Email</span><strong>liewpang@graduate.utm.my</strong><i>↗</i></a>
+              <a href="https://www.linkedin.com/in/liew-choon-pang-a2aa461b8/" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>https://www.linkedin.com/in/liew-choon-pang-a2aa461b8/</strong><i>↗</i></a>
             </div>
           </div>
 
@@ -149,19 +153,53 @@
         <button id="close-modal-btn" class="modal-close" aria-label="Close project details">&times;</button>
         <div class="modal-layout">
           <div class="modal-left">
-            <div class="modal-media-placeholder"><span class="play-icon">▶</span></div>
+            <div class="modal-media-placeholder">
+              <img id="modal-thumbnail" src="" alt="Project thumbnail" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+            </div>
           </div>
           <div class="modal-right">
             <h2 id="modal-title">PROJECT TITLE</h2>
             <p id="modal-desc">Brief description.</p>
             <h3 class="modal-tech-title">TECHNOLOGIES USED</h3>
             <div class="tech-stack" id="modal-tech"></div>
-            <button class="btn modal-demo-btn">LIVE DEMO ↗</button>
+            <a id="modal-demo-link" class="btn modal-demo-btn" href="#" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 40px; text-decoration: none; box-sizing: border-box;">LIVE DEMO ↗</a>
           </div>
         </div>
       </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const modal = document.getElementById("project-modal");
+        const modalTitle = document.getElementById("modal-title");
+        const modalThumbnail = document.getElementById("modal-thumbnail");
+        const demoLink = document.getElementById("modal-demo-link");
+
+        function loadSelectedProjectMedia() {
+          const selectedProject = window.MEMBER_DATA.projects.find(
+            (project) => project.title === modalTitle.textContent.trim()
+          );
+
+          if (selectedProject) {
+            modalThumbnail.src = selectedProject.thumbnail;
+            modalThumbnail.alt = `${selectedProject.title} thumbnail`;
+            demoLink.href = selectedProject.video;
+          }
+        }
+
+        new MutationObserver(loadSelectedProjectMedia).observe(modalTitle, {
+          childList: true,
+          characterData: true,
+          subtree: true
+        });
+
+        new MutationObserver(() => {
+          if (!modal.classList.contains("hidden")) {
+            loadSelectedProjectMedia();
+          }
+        }).observe(modal, { attributes: true, attributeFilter: ["class"] });
+      });
+    </script>
   </body>
 </html>
