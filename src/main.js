@@ -701,7 +701,7 @@ if (isMemberPage && window.MEMBER_DATA) {
   }
 
   window.addEventListener('pointerup', (event) => {
-    if (!skillsModelRoot || (!skillsWalkAction && !skillsWalkSound) || skillsModelIsWalking) return;
+    if (!skillsModelRoot || (!skillsWalkAction && !skillsWalkSound)) return;
     if (event.target.closest('a, button, input, textarea')) return;
 
     skillsPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -709,6 +709,20 @@ if (isMemberPage && window.MEMBER_DATA) {
     skillsRaycaster.setFromCamera(skillsPointer, camera);
 
     if (skillsRaycaster.intersectObject(skillsModelRoot, true).length === 0) return;
+
+    // second click while it's already going stops it instead of restarting
+    if (skillsModelIsWalking) {
+      if (skillsWalkSound) {
+        skillsWalkSound.pause();
+        skillsWalkSound.currentTime = 0;
+      }
+      if (skillsWalkAction) {
+        skillsWalkAction.fadeOut(0.15);
+        skillsIdleAction?.reset().fadeIn(0.15).play();
+      }
+      skillsModelIsWalking = false;
+      return;
+    }
 
     skillsModelIsWalking = true;
     if (skillsWalkAction) {
@@ -799,6 +813,38 @@ if (isMemberPage && window.MEMBER_DATA) {
   projectCount = projectsData.length;
   const projectColors = [0x1166ff, 0xff1166, 0x11ff66, 0xffaa11, 0xaa11ff];
 
+  function openMediaLightbox(kind, src) {
+    let overlay = document.getElementById('media-lightbox');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'media-lightbox';
+      overlay.className = 'lightbox-overlay hidden';
+      overlay.innerHTML = `
+        <button class="lightbox-close" type="button" aria-label="Close full view">&times;</button>
+        <div class="lightbox-inner"></div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeMediaLightbox();
+      });
+      overlay.querySelector('.lightbox-close').addEventListener('click', closeMediaLightbox);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMediaLightbox();
+      });
+    }
+    overlay.querySelector('.lightbox-inner').innerHTML = kind === 'video'
+      ? `<video src="${src}" controls autoplay playsinline></video>`
+      : `<img src="${src}" alt="">`;
+    overlay.classList.remove('hidden');
+  }
+
+  function closeMediaLightbox() {
+    const overlay = document.getElementById('media-lightbox');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.querySelector('.lightbox-inner').innerHTML = '';
+  }
+
   function renderProjectMedia(container, project, context = 'card') {
     if (!container) return;
 
@@ -827,6 +873,7 @@ if (isMemberPage && window.MEMBER_DATA) {
           image.src = src;
           image.alt = `${project.title} image ${itemIndex + 1}`;
           image.loading = 'lazy';
+          image.addEventListener('click', () => openMediaLightbox('image', src));
           track.appendChild(image);
         });
         container.classList.add('has-media', 'has-gallery');
@@ -876,6 +923,7 @@ if (isMemberPage && window.MEMBER_DATA) {
     image.src = media.src;
     image.alt = media.alt || `${project.title} preview`;
     image.loading = 'lazy';
+    if (context === 'modal') image.addEventListener('click', () => openMediaLightbox('image', media.src));
     container.appendChild(image);
   }
 
@@ -936,7 +984,7 @@ if (isMemberPage && window.MEMBER_DATA) {
           demoLink.href = hasDemoUrl ? demoUrl : '#';
         } else {
           demoLink.onclick = hasDemoUrl
-            ? () => window.open(demoUrl, '_blank', 'noopener,noreferrer')
+            ? () => openMediaLightbox('video', demoUrl)
             : null;
         }
       }
