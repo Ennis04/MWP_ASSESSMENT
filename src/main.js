@@ -43,30 +43,37 @@ const fillLight = new THREE.DirectionalLight(0xffd0a0, 0.6);
 fillLight.position.set(-10, 5, -5);
 scene.add(fillLight);
 
-const orbitingLight = new THREE.PointLight(0x6a11ff, 4, 100);
+// The orbiting light is now just a group to hold the bone, so it doesn't cast purple light
+const orbitingLight = new THREE.Group();
 if (isIndexPage) scene.add(orbitingLight);
 
-// Add a small 3D Satellite model instead of a simple sphere
+// Add a cute cartoon bone instead of a satellite
 const satellite = new THREE.Group();
+const boneMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.1 });
 
-// Satellite Body
-const satBodyGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-const satBodyMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
-const satBody = new THREE.Mesh(satBodyGeo, satBodyMat);
-satellite.add(satBody);
+// Shaft
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2, 16), boneMat);
+shaft.rotation.z = Math.PI / 2;
+satellite.add(shaft);
 
-// Solar Panels
-const panelGeo = new THREE.BoxGeometry(2.5, 0.05, 0.8);
-const panelMat = new THREE.MeshStandardMaterial({ color: 0x1155ff, metalness: 0.6, roughness: 0.2 });
-const panels = new THREE.Mesh(panelGeo, panelMat);
-satellite.add(panels);
+// Ends
+const endGeo = new THREE.SphereGeometry(0.5, 16, 16);
+const end1 = new THREE.Mesh(endGeo, boneMat);
+end1.position.set(1.1, 0.3, 0);
+satellite.add(end1);
 
-// Glowing light bulb to indicate it's emitting the purple light
-const bulbGeo = new THREE.SphereGeometry(0.15, 8, 8);
-const bulbMat = new THREE.MeshBasicMaterial({ color: 0x9d5cff });
-const bulb = new THREE.Mesh(bulbGeo, bulbMat);
-bulb.position.y = 0.4;
-satellite.add(bulb);
+const end2 = new THREE.Mesh(endGeo, boneMat);
+end2.position.set(1.1, -0.3, 0);
+satellite.add(end2);
+
+const end3 = new THREE.Mesh(endGeo, boneMat);
+end3.position.set(-1.1, 0.3, 0);
+satellite.add(end3);
+
+const end4 = new THREE.Mesh(endGeo, boneMat);
+end4.position.set(-1.1, -0.3, 0);
+satellite.add(end4);
+
 
 orbitingLight.add(satellite);
 
@@ -99,10 +106,10 @@ const memberCount = 4;
 // Member information
 
 const indexMemberData = [
-  { name: "Ennis Lam Si Hoong", role: "Frontend Developer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "BSc Computer Science", int: "UI/UX, WebGL", asp: "Create immersive worlds", ach: "Best UI Award", cert: "React Certified" },
-  { name: "Liew Choon Pang", role: "Backend Developer", link: "liew.html", image: "/members/liew.png", ed: "BA Digital Arts", int: "Modeling, Texturing", asp: "Lead Art Director", ach: "Top 10 ArtStation", cert: "Blender Master" },
-  { name: "Chua Lin Wei", role: "Scrum Master", link: "chua.html", image: "/members/fifi.jpeg", ed: "BSc Computer Science", int: "Data Analytics, Scrum Master", asp: "Chief Technology Officer", ach: "Penang Heritage Hub System Cert of Contribution", cert: "i-CPROM 2023 Bronze" },
-  { name: "Tai Yi Tian", role: "Fullstack Developer", link: "tai.html", image: "/members/tai.jpeg", ed: "MBA, BSc IT", int: "Agile, Leadership", asp: "Tech Lead", ach: "Shipped 10+ Apps", cert: "Scrum Master" }
+  { name: "Ennis Lam Si Hoong", role: "Student", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Passionate about interactive web design. Aspires to build immersive 3D frontend applications.", ach: "Dean's List 2023, completed Advanced Web UI/UX Bootcamp." },
+  { name: "Liew Choon Pang", role: "Student", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023, AWS Cloud Practitioner." },
+  { name: "Chua Lin Wei", role: "Student", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Eager to learn user-centric design principles. Aims to create accessible and beautiful digital tools.", ach: "Top 10 in Campus Design Challenge, Google UX Design Certificate." },
+  { name: "Tai Yi Tian", role: "Student", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA with 3.93" }
 ];
 
 const memberPhotoCanvasWidth = 800;
@@ -243,8 +250,6 @@ if (isIndexPage) {
     metalness: 0.1
   });
 
-  // The dog model is intentionally loaded from public/ so it can be swapped without
-  // rebuilding the site. Model: public/baby-dog/source/baby dog.glb.
   const dogLoader = new GLTFLoader();
   dogLoader.load(
     '/baby-dog/source/baby%20dog.glb',
@@ -390,9 +395,8 @@ if (isIndexPage) {
     camera.position.z = 30 - (progress * 18); 
     carouselGroup.position.x = -7.5; 
     
-    // Hide the satellite and fade the light when scrolling away from Landing Page
+    // Hide the bone when scrolling away from Landing Page
     satellite.visible = progress < 0.1; 
-    orbitingLight.intensity = 4 * Math.max(1 - (progress * 3), 0); 
   }
   document.body.onscroll = moveCamera;
   moveCamera();
@@ -408,10 +412,8 @@ if (isIndexPage) {
     document.getElementById('member-name').innerText = data.name;
     document.getElementById('member-role').innerText = data.role;
     document.getElementById('member-education').innerText = data.ed;
-    document.getElementById('member-interests').innerText = data.int;
     document.getElementById('member-aspirations').innerText = data.asp;
     document.getElementById('member-achievements').innerText = data.ach;
-    document.getElementById('member-certs').innerText = data.cert;
     
     dots.forEach((dot, i) => {
       if (i === index) dot.classList.add('active');
@@ -682,11 +684,11 @@ if (portraitCard) {
       (gltf) => {
         memberModelGroup = gltf.scene;
 
-        // Auto-scale so the tallest axis fits within ~12 units
+        // Auto-scale so the tallest axis fits within ~36 units
         const mBounds = new THREE.Box3().setFromObject(memberModelGroup);
         const mSize   = mBounds.getSize(new THREE.Vector3());
         const mCenter = mBounds.getCenter(new THREE.Vector3());
-        const mScale  = 12 / Math.max(mSize.x, mSize.y, mSize.z);
+        const mScale  = 36 / Math.max(mSize.x, mSize.y, mSize.z);
         memberModelGroup.scale.setScalar(mScale);
         // Centre the model at the origin of skillsGroup
         modelCenterY = mCenter.y * mScale;
@@ -695,11 +697,66 @@ if (portraitCard) {
 
         skillsGroup.add(memberModelGroup);
 
-        // Play embedded animations if any
+        // Setup audio listener and load the meme sound
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+        const sound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load('/oiia-oiia-sound.mp3', function(buffer) {
+          sound.setBuffer(buffer);
+          sound.setLoop(false); // Don't loop, so it can auto-stop
+          sound.setVolume(0.8);
+        });
+
+        // Initialize embedded animations in a stopped state (default pose)
+        let actions = [];
         if (gltf.animations && gltf.animations.length > 0) {
           memberModelMixer = new THREE.AnimationMixer(memberModelGroup);
-          gltf.animations.forEach(clip => memberModelMixer.clipAction(clip).play());
+          gltf.animations.forEach(clip => {
+            const action = memberModelMixer.clipAction(clip);
+            actions.push(action);
+          });
         }
+        
+        // Raycaster for click detection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        window.isModelActive = false;
+        
+        window.addEventListener('click', (event) => {
+          if (!memberModelGroup) return;
+          // Normalize mouse coordinates
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+          raycaster.setFromCamera(mouse, camera);
+          
+          const intersects = raycaster.intersectObject(memberModelGroup, true);
+          if (intersects.length > 0) {
+            window.isModelActive = !window.isModelActive; // Toggle state
+            
+            if (window.isModelActive) {
+              // Start embedded animations
+              actions.forEach(action => action.play());
+              
+              // Start sound and setup auto-stop
+              if (sound.buffer) {
+                if (sound.isPlaying) sound.stop();
+                sound.play();
+                
+                if (sound.source) {
+                  sound.source.onended = () => {
+                    window.isModelActive = false;
+                    actions.forEach(action => action.stop()); // Resets to default pose
+                  };
+                }
+              }
+            } else {
+              // Stop everything and reset to default pose
+              actions.forEach(action => action.stop());
+              if (sound.buffer && sound.isPlaying) sound.stop();
+            }
+          }
+        });
       },
       undefined,
       (err) => console.warn('Member model failed to load:', err)
@@ -940,7 +997,9 @@ if (portraitCard) {
     
     const data = projectsData[i];
     cardContent.innerHTML = `
-      <div class="project-card-media">${getCardMediaHTML(data.media)}</div>
+      <div class="project-card-media">
+        ${data.image ? `<img src="${data.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" alt="${data.title}" />` : `<span>🖼️</span>`}
+      </div>
       <div class="project-card-text">
         <h3>${data.title}</h3>
         <p>${data.desc}</p>
@@ -964,17 +1023,14 @@ if (portraitCard) {
         span.innerText = t;
         techContainer.appendChild(span);
       });
-      renderModalMedia(data.media);
 
-      const demoBtn = document.querySelector('.modal-demo-btn');
-      if (demoBtn) {
-        if (data.demoVideo) {
-          demoBtn.style.display = '';
-          demoBtn.onclick = () => openLightboxVideo(data.demoVideo);
-        } else {
-          demoBtn.style.display = 'none';
-          demoBtn.onclick = null;
-        }
+      const mediaContainer = document.querySelector('.modal-left');
+      if (data.video) {
+        mediaContainer.innerHTML = `<video src="${data.video}" controls autoplay style="width: 100%; height: 100%; border-radius: 15px; object-fit: cover; background: #000;"></video>`;
+      } else if (data.image) {
+        mediaContainer.innerHTML = `<img src="${data.image}" style="width: 100%; height: 100%; border-radius: 15px; object-fit: cover;" alt="${data.title}" />`;
+      } else {
+        mediaContainer.innerHTML = `<div class="modal-media-placeholder"><span class="play-icon">▶</span></div>`;
       }
 
       document.getElementById('project-modal').classList.remove('hidden');
@@ -1024,7 +1080,11 @@ if (portraitCard) {
 
   const modal = document.getElementById('project-modal');
   const closeModalBtn = document.getElementById('close-modal-btn');
-  if(closeModalBtn) closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  if(closeModalBtn) closeModalBtn.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    const video = modal.querySelector('video');
+    if (video) video.pause();
+  });
 }
 
 // Animation Loop
@@ -1087,18 +1147,15 @@ function animate() {
     
     skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
 
-    // spin the model slowly and give it a gentle bob
+    // Animate the centre model: spin + gentle bob (lowered base Y position)
     if (memberModelGroup) {
-      memberModelGroup.rotation.y += 0.008;
-      const bobTime = animationClock.elapsedTime;
-      memberModelGroup.position.y = -modelCenterY + modelYOffset + Math.sin(bobTime * 1.8) * 0.8;
-
-      if (minionBubbleEl) {
-        const headPos = new THREE.Vector3(0, modelTopY + 1.5, 0);
-        headPos.applyMatrix4(memberModelGroup.matrixWorld);
-        headPos.project(camera);
-        minionBubbleEl.style.left = (headPos.x * 0.5 + 0.5) * window.innerWidth + 'px';
-        minionBubbleEl.style.top = (headPos.y * -0.5 + 0.5) * window.innerHeight + 'px';
+      if (window.isModelActive) {
+        memberModelGroup.rotation.y += 0.08; // Fast spin when active
+        const bobTime = animationClock.elapsedTime;
+        memberModelGroup.position.y = -4.5 + Math.sin(bobTime * 4.0) * 0.8; // Fast bob
+      } else {
+        memberModelGroup.rotation.y += 0.005; // Gentle idle rotation
+        memberModelGroup.position.y = -4.5; // Stay still when inactive
       }
     } else {
       globe.rotation.y += 0.005;
