@@ -8,9 +8,8 @@ import gsap from 'gsap';
 const isIndexPage = document.getElementById('index-page') !== null;
 const isMemberPage = document.getElementById('member-page') !== null;
 
-// ==========================================
-// 1. SCENE SETUP
-// ==========================================
+//Scene Setup
+
 const canvas = document.querySelector('#bg');
 const scene = new THREE.Scene();
 
@@ -94,7 +93,7 @@ scene.add(stars);
 const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8, metalness: 0.2 });
 
 // ==========================================
-// GLOBALS FOR INDEX PAGE
+// INDEX PAGE
 // ==========================================
 let dogGroup, dogMixer, dogBaseY = 0, scrollProgress = 0;
 let targetRotationY = -0.8;
@@ -104,10 +103,8 @@ const animationClock = new THREE.Clock();
 let carouselGroup, cuboids = [];
 const memberCount = 4;
 
-// Member information used by the About Us carousel.
-// To add your own photos:
-// 1. Put the image files in public/members/.
-// 2. Update each image path below. Square or portrait images work best.
+// Member information
+
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Student", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Passionate about interactive web design. Aspires to build immersive 3D frontend applications.", ach: "Dean's List 2023, completed Advanced Web UI/UX Bootcamp." },
   { name: "Liew Choon Pang", role: "Student", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023, AWS Cloud Practitioner." },
@@ -497,16 +494,183 @@ let skillsGroup, globe, skillObjects = [];
 let memberModelGroup = null, memberModelMixer = null;
 let projectsGroup, projectCuboids = [];
 let projectCount = 0;
+let modelYOffset = 0;
+let modelCenterY = 0;
+let modelTopY = 6;
+let bananaInstances = [];
+let minionBubbleEl = null, minionAudio = null;
+const bananaRainGroup = new THREE.Group();
+scene.add(bananaRainGroup);
+const modelRaycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
 
 if (isMemberPage && window.MEMBER_DATA) {
   const mData = window.MEMBER_DATA;
-  
+  modelYOffset = mData.modelYOffset || 0;
+
   // Update header automatically
   const nameEl = document.getElementById('detail-name');
   if(nameEl) nameEl.innerText = mData.name;
   
   const roleEl = document.getElementById('detail-role');
   if(roleEl) roleEl.innerText = mData.role;
+
+
+//portrait card interaction
+const portraitCard = document.querySelector('.portrait-card');
+
+if (portraitCard) {
+  const maxTilt = 20;
+
+  let currentTiltX = 0;
+  let currentTiltY = 0;
+  let targetTiltX = 0;
+  let targetTiltY = 0;
+
+  let animationFrame = null;
+  let isPortraitDragging = false;
+  let portraitBounds = null;
+
+  // These styles improve mouse and touch interaction.
+  portraitCard.style.cursor = 'grab';
+  portraitCard.style.touchAction = 'none';
+  portraitCard.style.userSelect = 'none';
+  portraitCard.style.willChange = 'transform';
+  portraitCard.style.transformStyle = 'preserve-3d';
+
+  function animatePortraitTilt() {
+    // Smoothly move towards the target rotation.
+    currentTiltX += (targetTiltX - currentTiltX) * 0.14;
+    currentTiltY += (targetTiltY - currentTiltY) * 0.14;
+
+    // Slightly enlarge the card while it is tilting.
+    const tiltAmount = Math.min(
+      (Math.abs(currentTiltX) + Math.abs(currentTiltY)) / maxTilt,
+      1
+    );
+
+    const scale = 1 + tiltAmount * 0.025;
+
+    portraitCard.style.transform = `
+      perspective(1100px)
+      rotateX(${currentTiltX}deg)
+      rotateY(${currentTiltY}deg)
+      scale3d(${scale}, ${scale}, ${scale})
+    `;
+
+    const stillMoving =
+      Math.abs(targetTiltX - currentTiltX) > 0.02 ||
+      Math.abs(targetTiltY - currentTiltY) > 0.02;
+
+    if (stillMoving) {
+      animationFrame = requestAnimationFrame(animatePortraitTilt);
+    } else {
+      animationFrame = null;
+    }
+  }
+
+  function startTiltAnimation() {
+    if (animationFrame === null) {
+      animationFrame = requestAnimationFrame(animatePortraitTilt);
+    }
+  }
+
+  function updatePortraitTilt(event) {
+    const rect =
+      portraitBounds || portraitCard.getBoundingClientRect();
+
+    // Convert pointer position into values between -1 and 1.
+    const pointerX = Math.max(
+      -1,
+      Math.min(
+        1,
+        ((event.clientX - rect.left) / rect.width) * 2 - 1
+      )
+    );
+
+    const pointerY = Math.max(
+      -1,
+      Math.min(
+        1,
+        ((event.clientY - rect.top) / rect.height) * 2 - 1
+      )
+    );
+
+    // Limit rotation to 20 degrees.
+    targetTiltX = -pointerY * maxTilt;
+    targetTiltY = pointerX * maxTilt;
+
+    startTiltAnimation();
+  }
+
+  function resetPortraitTilt() {
+    targetTiltX = 0;
+    targetTiltY = 0;
+    portraitCard.style.cursor = 'grab';
+
+    startTiltAnimation();
+  }
+
+  // Desktop hover
+  portraitCard.addEventListener('pointerenter', (event) => {
+    portraitBounds = portraitCard.getBoundingClientRect();
+    updatePortraitTilt(event);
+  });
+
+  portraitCard.addEventListener('pointermove', (event) => {
+    updatePortraitTilt(event);
+  });
+
+  // Mouse and touch dragging
+  portraitCard.addEventListener('pointerdown', (event) => {
+    isPortraitDragging = true;
+    portraitBounds =
+      portraitBounds || portraitCard.getBoundingClientRect();
+
+    portraitCard.style.cursor = 'grabbing';
+    portraitCard.setPointerCapture(event.pointerId);
+
+    updatePortraitTilt(event);
+  });
+
+  portraitCard.addEventListener('pointerup', (event) => {
+    isPortraitDragging = false;
+    portraitCard.style.cursor = 'grab';
+
+    if (portraitCard.hasPointerCapture(event.pointerId)) {
+      portraitCard.releasePointerCapture(event.pointerId);
+    }
+
+    const rect =
+      portraitBounds || portraitCard.getBoundingClientRect();
+
+    const pointerInside =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+
+    // Touch always returns to normal.
+    // Mouse remains tilted if it is still hovering over the card.
+    if (event.pointerType !== 'mouse' || !pointerInside) {
+      portraitBounds = null;
+      resetPortraitTilt();
+    }
+  });
+
+  portraitCard.addEventListener('pointerleave', () => {
+    if (!isPortraitDragging) {
+      portraitBounds = null;
+      resetPortraitTilt();
+    }
+  });
+
+  portraitCard.addEventListener('pointercancel', () => {
+    isPortraitDragging = false;
+    portraitBounds = null;
+    resetPortraitTilt();
+  });
+}
 
   // Skills Scene
   skillsGroup = new THREE.Group();
@@ -527,7 +691,9 @@ if (isMemberPage && window.MEMBER_DATA) {
         const mScale  = 36 / Math.max(mSize.x, mSize.y, mSize.z);
         memberModelGroup.scale.setScalar(mScale);
         // Centre the model at the origin of skillsGroup
-        memberModelGroup.position.set(-mCenter.x * mScale, -mCenter.y * mScale, -mCenter.z * mScale);
+        modelCenterY = mCenter.y * mScale;
+        modelTopY = (mBounds.max.y - mCenter.y) * mScale;
+        memberModelGroup.position.set(-mCenter.x * mScale, -modelCenterY + modelYOffset, -mCenter.z * mScale);
 
         skillsGroup.add(memberModelGroup);
 
@@ -603,6 +769,64 @@ if (isMemberPage && window.MEMBER_DATA) {
     skillsGroup.add(globe);
   }
 
+  // minion speech bubble + click sound toggle
+  if (mData.clickSound || mData.clickMessage) {
+    const bubbleContainer = document.getElementById('skills-labels');
+    minionBubbleEl = document.createElement('div');
+    minionBubbleEl.className = 'minion-bubble visible';
+    minionBubbleEl.textContent = mData.clickMessage || '';
+    if (bubbleContainer) bubbleContainer.appendChild(minionBubbleEl);
+
+    if (mData.clickSound) minionAudio = new Audio(mData.clickSound);
+
+    window.addEventListener('click', (e) => {
+      if (!memberModelGroup || !minionAudio) return;
+      pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      modelRaycaster.setFromCamera(pointerNDC, camera);
+      const hits = modelRaycaster.intersectObject(memberModelGroup, true);
+      if (hits.length === 0) return;
+
+      // toggle: click once to play, click again while it's playing to stop
+      if (minionAudio.paused) {
+        minionAudio.currentTime = 0;
+        minionAudio.play().catch(() => {});
+      } else {
+        minionAudio.pause();
+        minionAudio.currentTime = 0;
+      }
+    });
+  }
+
+  // banana rain, purely decorative
+  if (mData.rainModel) {
+    const rainLoader = new GLTFLoader();
+    rainLoader.load(mData.rainModel, (gltf) => {
+      const template = gltf.scene;
+      const rBounds = new THREE.Box3().setFromObject(template);
+      const rSize = rBounds.getSize(new THREE.Vector3());
+      const rCenter = rBounds.getCenter(new THREE.Vector3());
+      const rScale = 2.4 / Math.max(rSize.x, rSize.y, rSize.z);
+      const rainCount = mData.rainCount || 20;
+
+      for (let i = 0; i < rainCount; i++) {
+        const banana = template.clone(true);
+        const s = rScale * (0.7 + Math.random() * 0.6);
+        banana.scale.setScalar(s);
+        banana.position.set(
+          -rCenter.x * s + (Math.random() * 50 - 25),
+          -rCenter.y * s + (Math.random() * 60 - 15),
+          -rCenter.z * s + (Math.random() * 20 - 15)
+        );
+        banana.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        banana.userData.fallSpeed = 0.03 + Math.random() * 0.05;
+        banana.userData.spinSpeed = (Math.random() - 0.5) * 0.02;
+        bananaRainGroup.add(banana);
+        bananaInstances.push(banana);
+      }
+    }, undefined, (err) => console.warn('banana model did not load', err));
+  }
+
   const skillsBase = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.5, 32), baseMat);
   skillsBase.position.y = -10;
   skillsGroup.add(skillsBase);
@@ -656,6 +880,114 @@ if (isMemberPage && window.MEMBER_DATA) {
   projectsRing.position.y = -4.7;
   projectsGroup.add(projectsRing);
 
+  function getCardMediaHTML(media) {
+    if (!media) return '<span></span>';
+    if (media.type === 'image') return `<img src="${media.src}" alt="" loading="lazy">`;
+    if (media.type === 'video') return `<video src="${media.src}" muted playsinline preload="metadata"></video>`;
+    if (media.type === 'gallery' && media.items && media.items.length) return `<img src="${media.items[0]}" alt="" loading="lazy">`;
+    return '<span></span>';
+  }
+
+  function getLightbox() {
+    let lb = document.getElementById('media-lightbox');
+    if (lb) return lb;
+    lb = document.createElement('div');
+    lb.id = 'media-lightbox';
+    lb.className = 'lightbox-overlay hidden';
+    lb.innerHTML = `
+      <button class="lightbox-close" type="button" aria-label="Close full view">&times;</button>
+      <div class="lightbox-inner"></div>
+    `;
+    document.body.appendChild(lb);
+    lb.addEventListener('click', (e) => {
+      if (e.target === lb) closeLightbox();
+    });
+    lb.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+    return lb;
+  }
+
+  function closeLightbox() {
+    const lb = document.getElementById('media-lightbox');
+    if (!lb) return;
+    lb.classList.add('hidden');
+    lb.querySelector('.lightbox-inner').innerHTML = '';
+  }
+
+  function openLightboxImage(src) {
+    const lb = getLightbox();
+    lb.querySelector('.lightbox-inner').innerHTML = `<img src="${src}" alt="">`;
+    lb.classList.remove('hidden');
+  }
+
+  function openLightboxVideo(src) {
+    const lb = getLightbox();
+    lb.querySelector('.lightbox-inner').innerHTML = `<video src="${src}" controls autoplay playsinline></video>`;
+    lb.classList.remove('hidden');
+  }
+
+  function renderModalMedia(media) {
+    const container = document.querySelector('.modal-media-placeholder');
+    if (!container) return;
+    container.innerHTML = '';
+    container.classList.remove('has-gallery');
+
+    if (!media) {
+      container.classList.remove('has-media');
+      container.innerHTML = '<span class="play-icon">▶</span>';
+      return;
+    }
+
+    container.classList.add('has-media');
+
+    if (media.type === 'image') {
+      container.innerHTML = `<img src="${media.src}" alt="">`;
+      container.querySelector('img').addEventListener('click', () => openLightboxImage(media.src));
+    } else if (media.type === 'video') {
+      container.innerHTML = `<video src="${media.src}" controls playsinline></video>`;
+    } else if (media.type === 'gallery' && media.items && media.items.length) {
+      container.classList.add('has-gallery');
+      const track = document.createElement('div');
+      track.className = 'gallery-track';
+      media.items.forEach(src => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.loading = 'lazy';
+        img.addEventListener('click', () => openLightboxImage(src));
+        track.appendChild(img);
+      });
+
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'gallery-arrow gallery-prev';
+      prevBtn.type = 'button';
+      prevBtn.setAttribute('aria-label', 'Previous image');
+      prevBtn.innerHTML = '←';
+      prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' });
+      });
+
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'gallery-arrow gallery-next';
+      nextBtn.type = 'button';
+      nextBtn.setAttribute('aria-label', 'Next image');
+      nextBtn.innerHTML = '→';
+      nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
+      });
+
+      container.appendChild(track);
+      container.appendChild(prevBtn);
+      container.appendChild(nextBtn);
+    } else {
+      container.classList.remove('has-media');
+      container.innerHTML = '<span class="play-icon">▶</span>';
+    }
+  }
+
   for (let i = 0; i < projectCount; i++) {
     const mesh = new THREE.Mesh(new RoundedBoxGeometry(6.75, 9.75, 0.6, 4, 0.3), new THREE.MeshStandardMaterial({ color: projectColors[i % projectColors.length], roughness: 0.2, metalness: 0.1 }));
     
@@ -674,12 +1006,12 @@ if (isMemberPage && window.MEMBER_DATA) {
         <button class="card-btn view-details-btn">VIEW DETAILS</button>
       </div>
     `;
-    
+
     const cssObject = new CSS3DObject(cardContent);
     cssObject.scale.set(0.021, 0.021, 0.021);
     cssObject.position.set(0, 0, 0.31);
     mesh.add(cssObject);
-    
+
     const btn = cardContent.querySelector('.view-details-btn');
     btn.addEventListener('click', () => {
       document.getElementById('modal-title').innerText = data.title;
@@ -761,15 +1093,27 @@ if (isMemberPage && window.MEMBER_DATA) {
   });
 }
 
-// ==========================================
-// ANIMATION LOOP
-// ==========================================
+// Animation Loop
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(animationClock.getDelta(), 0.05);
 
   stars.rotation.y += 0.0005;
   stars.rotation.x += 0.0002;
+
+  // Falling banana rain
+  if (bananaInstances.length) {
+    bananaInstances.forEach((banana) => {
+      banana.position.y -= banana.userData.fallSpeed;
+      banana.rotation.x += banana.userData.spinSpeed;
+      banana.rotation.y += banana.userData.spinSpeed * 1.4;
+      if (banana.position.y < -30) {
+        banana.position.y = 30 + Math.random() * 10;
+        banana.position.x = Math.random() * 50 - 25;
+        banana.position.z = Math.random() * 20 - 15;
+      }
+    });
+  }
 
   // Orbiting satellite light
   const time = Date.now() * 0.0015;
@@ -823,7 +1167,7 @@ function animate() {
       globe.rotation.y += 0.005;
       globe.rotation.x += 0.002;
     }
-    
+
     skillObjects.forEach((obj, i) => {
       obj.mesh.position.y = obj.baseY + Math.sin(Date.now() * 0.002 + i) * 0.5;
       const vector = obj.mesh.position.clone();
@@ -852,3 +1196,29 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+window.__checkBubble = () => {
+  const rect = document.getElementById('member-skills').getBoundingClientRect();
+  const viewportCenter = window.innerHeight / 2;
+  const spacerCenter = rect.top + (rect.height / 2) - 40;
+  const unitPerPixel = (2 * 30 * Math.tan(THREE.MathUtils.degToRad(75 / 2))) / window.innerHeight;
+  skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
+  memberModelGroup.position.y = -modelCenterY + modelYOffset;
+  scene.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(memberModelGroup);
+  const topWorld = new THREE.Vector3(0, box.max.y, 0);
+  topWorld.project(camera);
+  const topScreenY = (topWorld.y * -0.5 + 0.5) * window.innerHeight;
+
+  const headPos = new THREE.Vector3(0, modelTopY + 1.5, 0);
+  headPos.applyMatrix4(memberModelGroup.matrixWorld);
+  headPos.project(camera);
+  const bubbleScreenY = (headPos.y * -0.5 + 0.5) * window.innerHeight;
+
+  return JSON.stringify({
+    headTopScreenY: topScreenY, bubbleAnchorScreenY: bubbleScreenY, gap: topScreenY - bubbleScreenY,
+    boxMinY: box.min.y, boxMaxY: box.max.y, groupWorldY: memberModelGroup.position.y, skillsGroupY: skillsGroup.position.y,
+    modelCenterY, modelTopY
+  });
+};
