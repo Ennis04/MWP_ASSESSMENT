@@ -6,9 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Liew Choon Pang - Portfolio</title>
   </head>
-  <body id="member-page">
+  <body id="member-page" class="ennis-page">
     <canvas id="bg"></canvas>
 
+    <!-- DATA CONFIGURATION -->
+    <!-- Members ONLY need to edit this block to update their 3D text! -->
     <script>
       window.MEMBER_DATA = {
         name: "Liew Choon Pang",
@@ -24,59 +26,128 @@
     </script>
 
     <main id="app">
-      <nav>
-        <a href="index.html" class="logo" style="text-decoration: none; color: inherit;">Group Name</a>
+      <nav class="ennis-nav">
+        <a href="index.html" class="logo ennis-logo" aria-label="Back to group portfolio">
+          <span class="logo-monogram">LC</span>
+          <span class="logo-copy">LIEW <small>PORTFOLIO</small></span>
+        </a>
         <ul class="nav-links">
-          <li><a href="index.html">Back to Home</a></li>
+          <li><a href="index.html">Home</a></li>
           <li><a href="#member-skills">Skills</a></li>
           <li><a href="#member-projects">Projects</a></li>
           <li><a href="#member-contact">Contact</a></li>
         </ul>
       </nav>
 
-      <section class="section" style="padding-top: 120px;">
-        <div style="max-width: 800px; margin: 0 auto; width: 100%;">
-          <h1 id="detail-name">Liew Choon Pang</h1>
-          <p id="detail-role" class="role" style="font-size: 1.5rem; margin-bottom: 2rem;">Backend Developer</p>
-          
-          <div id="member-skills" style="margin-bottom: 4rem; position: relative;">
-            <h2 style="text-align: center; margin-bottom: 2rem;">MY SKILLS</h2>
-            <div style="height: 600px; width: 100%; pointer-events: none;"></div>
-          </div>
-
-          <div id="member-projects" style="margin-bottom: 4rem;">
-            <h2 style="text-align: center; margin-bottom: 2rem;">MY PROJECTS</h2>
-            <div class="project-gallery-layout" style="display: flex; align-items: center; gap: 2rem; justify-content: center;">
-              <div class="project-carousel-container" style="flex: 1; max-width: 1000px; display: flex; align-items: center; justify-content: center; position: relative;">
-                <button id="prev-project" class="arrow-btn" style="position: absolute; left: 0; z-index: 10;">&lt;</button>
-                <div id="projects-spacer" style="height: 600px; width: 100%; pointer-events: none;"></div>
-                <button id="next-project" class="arrow-btn" style="position: absolute; right: 0; z-index: 10;">&gt;</button>
-              </div>
+      <section class="ennis-hero" aria-labelledby="detail-name">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow"><span></span> BACKEND DEVELOPER · SYSTEMS BUILDER</p>
+            <h1 id="detail-name">Liew Choon Pang</h1>
+            <p id="detail-role" class="hero-role">Backend Developer</p>
+            <p class="hero-intro">
+              I engineer dependable backend systems that turn complex data and APIs into
+              fast, secure and scalable products.
+            </p>
+            <div class="hero-actions">
+              <a class="btn hero-primary" href="#member-projects">Explore my work <span>↘</span></a>
+              <a class="hero-secondary" href="#member-contact">Let’s connect <span>→</span></a>
+            </div>
+            <div class="hero-facts" aria-label="Profile highlights">
+              <div><strong>04</strong><span>Featured projects</span></div>
+              <div><strong>06</strong><span>Core skills</span></div>
+              <div><strong>API</strong><span>Cloud systems focus</span></div>
             </div>
           </div>
 
-          <div id="member-contact" style="margin-bottom: 4rem;">
-            <h2>Contact</h2>
-            <div style="background: var(--glass-bg); padding: 2rem; border-radius: 15px; border: 1px solid var(--glass-border);">
-              <p>Email: liew@example.com</p>
-              <p>LinkedIn: linkedin.com/in/liew</p>
-              <form style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
-                <input type="text" placeholder="Your Name" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
-                <input type="email" placeholder="Your Email" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;">
-                <textarea placeholder="Your Message" rows="4" style="padding: 10px; border-radius: 5px; border: none; background: rgba(255,255,255,0.1); color: white;"></textarea>
-                <button type="button" class="btn">Send Message</button>
-              </form>
+          <aside class="portrait-card" aria-label="Portrait of Liew Choon Pang">
+            <div class="portrait-glow"></div>
+            <div class="portrait-frame">
+              <img src="/members/liew.png" alt="Liew Choon Pang" />
+              <div class="portrait-overlay"></div>
+              <span class="portrait-index">02 / 04</span>
+              <div class="availability"><i></i> Available for collaboration</div>
+            </div>
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+          </aside>
+        </div>
+        <a class="hero-scroll" href="#member-skills"><span>Scroll to explore</span><i>↓</i></a>
+      </section>
+
+      <section id="member-skills" class="ennis-showcase-section skills-section">
+        <header class="section-heading">
+          <div>
+            <p class="section-kicker">01 · CAPABILITIES</p>
+            <h2>Skills in orbit</h2>
+          </div>
+          <p>A growing toolkit for crafting fast, accessible and memorable digital products.</p>
+        </header>
+        <div class="showcase-stage skills-stage">
+          <div class="stage-grid" aria-hidden="true"></div>
+          <div class="stage-height" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section id="member-projects" class="ennis-showcase-section projects-section">
+        <header class="section-heading">
+          <div>
+            <p class="section-kicker">02 · SELECTED WORK</p>
+            <h2>Projects with purpose</h2>
+          </div>
+          <p>Use the controls to explore experiments across WebGL, product design and development.</p>
+        </header>
+        <div class="project-gallery-layout">
+          <div class="project-carousel-container">
+            <button id="prev-project" class="arrow-btn refined-arrow" aria-label="Previous project">←</button>
+            <div id="projects-spacer" class="projects-stage" aria-hidden="true"></div>
+            <button id="next-project" class="arrow-btn refined-arrow" aria-label="Next project">→</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="member-contact" class="ennis-contact-section">
+        <header class="section-heading contact-heading">
+          <div>
+            <p class="section-kicker">03 · GET IN TOUCH</p>
+            <h2>Let’s create something remarkable.</h2>
+          </div>
+        </header>
+        <div class="contact-grid">
+          <div class="contact-intro">
+            <p>Have an idea, collaboration or opportunity in mind? I’d love to hear about it.</p>
+            <div class="contact-links">
+              <a href="mailto:liew@example.com"><span>Email</span><strong>liew@example.com</strong><i>↗</i></a>
+              <a href="https://linkedin.com/in/liew" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/liew</strong><i>↗</i></a>
             </div>
           </div>
+
+          <form class="contact-form" aria-label="Contact Liew">
+            <div class="form-row">
+              <label for="contact-name">Your name</label>
+              <input id="contact-name" type="text" placeholder="How should I address you?" />
+            </div>
+            <div class="form-row">
+              <label for="contact-email">Email address</label>
+              <input id="contact-email" type="email" placeholder="you@example.com" />
+            </div>
+            <div class="form-row">
+              <label for="contact-message">Tell me about your idea</label>
+              <textarea id="contact-message" placeholder="Project, timeline, goals..." rows="5"></textarea>
+            </div>
+            <button type="button" class="btn contact-submit">Send message <span>↗</span></button>
+          </form>
         </div>
       </section>
     </main>
 
+    <!-- DOM Overlays for 3D Skills -->
     <div id="skills-labels" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100;"></div>
 
+    <!-- Project Details Modal -->
     <div id="project-modal" class="modal-overlay hidden">
       <div class="modal-content">
-        <button id="close-modal-btn" class="modal-close">&times;</button>
+        <button id="close-modal-btn" class="modal-close" aria-label="Close project details">&times;</button>
         <div class="modal-layout">
           <div class="modal-left">
             <div class="modal-media-placeholder"><span class="play-icon">▶</span></div>
@@ -84,9 +155,9 @@
           <div class="modal-right">
             <h2 id="modal-title">PROJECT TITLE</h2>
             <p id="modal-desc">Brief description.</p>
-            <h3 style="margin-top: 2rem; margin-bottom: 1rem; font-size: 0.9rem; letter-spacing: 1px; color: var(--text-secondary);">TECHNOLOGIES USED</h3>
+            <h3 class="modal-tech-title">TECHNOLOGIES USED</h3>
             <div class="tech-stack" id="modal-tech"></div>
-            <button class="btn" style="margin-top: 3rem; width: 100%;">LIVE DEMO ↗</button>
+            <button class="btn modal-demo-btn">LIVE DEMO ↗</button>
           </div>
         </div>
       </div>

@@ -97,6 +97,131 @@ const animationClock = new THREE.Clock();
 let carouselGroup, cuboids = [];
 const memberCount = 4;
 
+// Member information used by the About Us carousel.
+// To add your own photos:
+// 1. Put the image files in public/members/.
+// 2. Update each image path below. Square or portrait images work best.
+const indexMemberData = [
+  { name: "Ennis Lam Si Hoong", role: "Frontend Developer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "BSc Computer Science", int: "UI/UX, WebGL", asp: "Create immersive worlds", ach: "Best UI Award", cert: "React Certified" },
+  { name: "Liew Choon Pang", role: "Backend Developer", link: "liew.html", image: "/members/liew.png", ed: "BA Digital Arts", int: "Modeling, Texturing", asp: "Lead Art Director", ach: "Top 10 ArtStation", cert: "Blender Master" },
+  { name: "Chua Lin Wei", role: "UI/UX Designer", link: "chua.html", image: "/members/fifi.jpeg", ed: "MSc Software Eng", int: "APIs, Databases", asp: "System Architect", ach: "Hackathon Winner", cert: "AWS Solutions Architect" },
+  { name: "Tai Yi Tian", role: "Fullstack Developer", link: "tai.html", image: "/members/tai.jpeg", ed: "MBA, BSc IT", int: "Agile, Leadership", asp: "Tech Lead", ach: "Shipped 10+ Apps", cert: "Scrum Master" }
+];
+
+const memberPhotoCanvasWidth = 800;
+const memberPhotoCanvasHeight = 1184;
+
+function addRoundedRectanglePath(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
+function createInitialsTexture(name, backgroundColor) {
+  const canvas = document.createElement('canvas');
+  canvas.width = memberPhotoCanvasWidth;
+  canvas.height = memberPhotoCanvasHeight;
+  const context = canvas.getContext('2d');
+  const initials = name
+    .split(' ')
+    .map(part => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  context.fillStyle = `#${backgroundColor.toString(16).padStart(6, '0')}`;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = 'rgba(255, 255, 255, 0.14)';
+  context.beginPath();
+  context.arc(canvas.width / 2, canvas.height * 0.42, 230, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = '#ffffff';
+  context.font = '700 190px Outfit, Arial, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(initials, canvas.width / 2, canvas.height * 0.42);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function createCenteredPhotoTexture(image) {
+  const canvas = document.createElement('canvas');
+  canvas.width = memberPhotoCanvasWidth;
+  canvas.height = memberPhotoCanvasHeight;
+  const context = canvas.getContext('2d');
+  const imageWidth = image.naturalWidth || image.width;
+  const imageHeight = image.naturalHeight || image.height;
+  const imageAspect = imageWidth / imageHeight;
+  const targetAspect = canvas.width / canvas.height;
+  let sourceX = 0;
+  let sourceY = 0;
+  let sourceWidth = imageWidth;
+  let sourceHeight = imageHeight;
+
+  // Calculate a centered object-fit: cover crop before creating the texture.
+  // All cards therefore receive pixels with exactly the same dimensions.
+  if (imageAspect > targetAspect) {
+    sourceWidth = imageHeight * targetAspect;
+    sourceX = (imageWidth - sourceWidth) / 2;
+  } else {
+    sourceHeight = imageWidth / targetAspect;
+    sourceY = (imageHeight - sourceHeight) / 2;
+  }
+
+  context.save();
+  addRoundedRectanglePath(context, 0, 0, canvas.width, canvas.height, 34);
+  context.clip();
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  // A restrained edge vignette gives the portraits more depth without
+  // obscuring faces or changing the original colours.
+  const vignette = context.createRadialGradient(
+    canvas.width / 2,
+    canvas.height * 0.42,
+    canvas.width * 0.22,
+    canvas.width / 2,
+    canvas.height / 2,
+    canvas.height * 0.72
+  );
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(0.72, 'rgba(0, 0, 0, 0.02)');
+  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.24)');
+  context.fillStyle = vignette;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.restore();
+
+  addRoundedRectanglePath(context, 3, 3, canvas.width - 6, canvas.height - 6, 32);
+  context.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+  context.lineWidth = 6;
+  context.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return texture;
+}
+
 if (isIndexPage) {
   // Load the dog textures with correct orientation
   // The GLB uses the KHR_materials_pbrSpecularGlossiness extension so we manually
@@ -184,10 +309,55 @@ if (isIndexPage) {
   carouselGroup.add(ringMeshBase);
 
   const colors = [0xff0055, 0x00ffcc, 0xffcc00, 0xaa3bff];
+  let currentMemberIndex = 0;
   for (let i = 0; i < memberCount; i++) {
-    const mesh = new THREE.Mesh(new RoundedBoxGeometry(6.75, 9.75, 0.6, 4, 0.3), new THREE.MeshStandardMaterial({ color: colors[i], roughness: 0.2, metalness: 0.1 }));
-    carouselGroup.add(mesh);
-    cuboids.push(mesh);
+    const member = indexMemberData[i];
+    const card = new THREE.Group();
+    const cardDepth = 0.32;
+
+    const cardBody = new THREE.Mesh(
+      new RoundedBoxGeometry(6.75, 9.75, cardDepth, 4, 0.24),
+      new THREE.MeshStandardMaterial({
+        color: colors[i],
+        emissive: colors[i],
+        emissiveIntensity: 0.14,
+        roughness: 0.28,
+        metalness: 0.42
+      })
+    );
+    card.add(cardBody);
+
+    const photoMaterial = new THREE.MeshBasicMaterial({
+      map: createInitialsTexture(member.name, colors[i]),
+      side: THREE.DoubleSide,
+      transparent: true,
+      alphaTest: 0.02,
+      toneMapped: false
+    });
+    const photoWidth = 6.25;
+    const photoHeight = 9.25;
+    const photo = new THREE.Mesh(new THREE.PlaneGeometry(photoWidth, photoHeight), photoMaterial);
+    // A small optical correction balances the visible frame because the
+    // carousel is intentionally positioned to the left of the camera.
+    photo.position.set(0.065, 0, (cardDepth / 2) + 0.012);
+    card.add(photo);
+
+    // If the configured image cannot be found, the initials texture remains visible.
+    textureLoader.load(
+      member.image,
+      loadedTexture => {
+        const centeredTexture = createCenteredPhotoTexture(loadedTexture.image);
+        loadedTexture.dispose();
+        photoMaterial.map?.dispose();
+        photoMaterial.map = centeredTexture;
+        photoMaterial.needsUpdate = true;
+      },
+      undefined,
+      () => console.info(`Member photo not found: ${member.image}. Showing initials instead.`)
+    );
+
+    carouselGroup.add(card);
+    cuboids.push(card);
   }
 
   function updateCarouselPositions(activeIndex, animate = false) {
@@ -231,19 +401,10 @@ if (isIndexPage) {
   moveCamera();
 
   // DOM Click Logic
-  let currentMemberIndex = 0;
   const prevBtn = document.getElementById('prev-member');
   const nextBtn = document.getElementById('next-member');
   const dots = document.querySelectorAll('.dot');
   const detailBtn = document.getElementById('detail-btn');
-
-  // We assign a specific link for each member
-  const indexMemberData = [
-    { name: "Ennis Lam Si Hoong", role: "Frontend Developer", link: "ennis.html", ed: "BSc Computer Science", int: "UI/UX, WebGL", asp: "Create immersive worlds", ach: "Best UI Award", cert: "React Certified" },
-    { name: "Liew Choon Pang", role: "Backend Developer", link: "liew.html", ed: "BA Digital Arts", int: "Modeling, Texturing", asp: "Lead Art Director", ach: "Top 10 ArtStation", cert: "Blender Master" },
-    { name: "Chua Lin Wei", role: "UI/UX Designer", link: "chua.html", ed: "MSc Software Eng", int: "APIs, Databases", asp: "System Architect", ach: "Hackathon Winner", cert: "AWS Solutions Architect" },
-    { name: "Tai Yi Tian", role: "Fullstack Developer", link: "tai.html", ed: "MBA, BSc IT", int: "Agile, Leadership", asp: "Tech Lead", ach: "Shipped 10+ Apps", cert: "Scrum Master" }
-  ];
 
   function updateMemberInfo(index) {
     const data = indexMemberData[index];
