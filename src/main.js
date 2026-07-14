@@ -8,9 +8,8 @@ import gsap from 'gsap';
 const isIndexPage = document.getElementById('index-page') !== null;
 const isMemberPage = document.getElementById('member-page') !== null;
 
-// ==========================================
-// 1. SCENE SETUP
-// ==========================================
+//Scene Setup
+
 const canvas = document.querySelector('#bg');
 const scene = new THREE.Scene();
 
@@ -87,7 +86,7 @@ scene.add(stars);
 const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8, metalness: 0.2 });
 
 // ==========================================
-// GLOBALS FOR INDEX PAGE
+// INDEX PAGE
 // ==========================================
 let dogGroup, dogMixer, dogBaseY = 0, scrollProgress = 0;
 let targetRotationY = -0.8;
@@ -97,10 +96,8 @@ const animationClock = new THREE.Clock();
 let carouselGroup, cuboids = [];
 const memberCount = 4;
 
-// Member information used by the About Us carousel.
-// To add your own photos:
-// 1. Put the image files in public/members/.
-// 2. Update each image path below. Square or portrait images work best.
+// Member information
+
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Frontend Developer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "BSc Computer Science", int: "UI/UX, WebGL", asp: "Create immersive worlds", ach: "Best UI Award", cert: "React Certified" },
   { name: "Liew Choon Pang", role: "Backend Developer", link: "liew.html", image: "/members/liew.png", ed: "BA Digital Arts", int: "Modeling, Texturing", asp: "Lead Art Director", ach: "Top 10 ArtStation", cert: "Blender Master" },
@@ -495,10 +492,20 @@ let skillsGroup, globe, skillObjects = [];
 let memberModelGroup = null, memberModelMixer = null;
 let projectsGroup, projectCuboids = [];
 let projectCount = 0;
+let modelYOffset = 0;
+let modelCenterY = 0;
+let modelTopY = 6;
+let bananaInstances = [];
+let minionBubbleEl = null, minionAudio = null;
+const bananaRainGroup = new THREE.Group();
+scene.add(bananaRainGroup);
+const modelRaycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
 
 if (isMemberPage && window.MEMBER_DATA) {
   const mData = window.MEMBER_DATA;
-  
+  modelYOffset = mData.modelYOffset || 0;
+
   // Update header automatically
   const nameEl = document.getElementById('detail-name');
   if(nameEl) nameEl.innerText = mData.name;
@@ -682,7 +689,9 @@ if (portraitCard) {
         const mScale  = 12 / Math.max(mSize.x, mSize.y, mSize.z);
         memberModelGroup.scale.setScalar(mScale);
         // Centre the model at the origin of skillsGroup
-        memberModelGroup.position.set(-mCenter.x * mScale, -mCenter.y * mScale, -mCenter.z * mScale);
+        modelCenterY = mCenter.y * mScale;
+        modelTopY = (mBounds.max.y - mCenter.y) * mScale;
+        memberModelGroup.position.set(-mCenter.x * mScale, -modelCenterY + modelYOffset, -mCenter.z * mScale);
 
         skillsGroup.add(memberModelGroup);
 
@@ -701,6 +710,64 @@ if (portraitCard) {
   } else {
     globe = new THREE.Mesh(new THREE.IcosahedronGeometry(7.5, 2), new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true }));
     skillsGroup.add(globe);
+  }
+
+  // minion speech bubble + click sound toggle
+  if (mData.clickSound || mData.clickMessage) {
+    const bubbleContainer = document.getElementById('skills-labels');
+    minionBubbleEl = document.createElement('div');
+    minionBubbleEl.className = 'minion-bubble visible';
+    minionBubbleEl.textContent = mData.clickMessage || '';
+    if (bubbleContainer) bubbleContainer.appendChild(minionBubbleEl);
+
+    if (mData.clickSound) minionAudio = new Audio(mData.clickSound);
+
+    window.addEventListener('click', (e) => {
+      if (!memberModelGroup || !minionAudio) return;
+      pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      modelRaycaster.setFromCamera(pointerNDC, camera);
+      const hits = modelRaycaster.intersectObject(memberModelGroup, true);
+      if (hits.length === 0) return;
+
+      // toggle: click once to play, click again while it's playing to stop
+      if (minionAudio.paused) {
+        minionAudio.currentTime = 0;
+        minionAudio.play().catch(() => {});
+      } else {
+        minionAudio.pause();
+        minionAudio.currentTime = 0;
+      }
+    });
+  }
+
+  // banana rain, purely decorative
+  if (mData.rainModel) {
+    const rainLoader = new GLTFLoader();
+    rainLoader.load(mData.rainModel, (gltf) => {
+      const template = gltf.scene;
+      const rBounds = new THREE.Box3().setFromObject(template);
+      const rSize = rBounds.getSize(new THREE.Vector3());
+      const rCenter = rBounds.getCenter(new THREE.Vector3());
+      const rScale = 2.4 / Math.max(rSize.x, rSize.y, rSize.z);
+      const rainCount = mData.rainCount || 20;
+
+      for (let i = 0; i < rainCount; i++) {
+        const banana = template.clone(true);
+        const s = rScale * (0.7 + Math.random() * 0.6);
+        banana.scale.setScalar(s);
+        banana.position.set(
+          -rCenter.x * s + (Math.random() * 50 - 25),
+          -rCenter.y * s + (Math.random() * 60 - 15),
+          -rCenter.z * s + (Math.random() * 20 - 15)
+        );
+        banana.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        banana.userData.fallSpeed = 0.03 + Math.random() * 0.05;
+        banana.userData.spinSpeed = (Math.random() - 0.5) * 0.02;
+        bananaRainGroup.add(banana);
+        bananaInstances.push(banana);
+      }
+    }, undefined, (err) => console.warn('banana model did not load', err));
   }
 
   const skillsBase = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.5, 32), baseMat);
@@ -756,6 +823,114 @@ if (portraitCard) {
   projectsRing.position.y = -4.7;
   projectsGroup.add(projectsRing);
 
+  function getCardMediaHTML(media) {
+    if (!media) return '<span></span>';
+    if (media.type === 'image') return `<img src="${media.src}" alt="" loading="lazy">`;
+    if (media.type === 'video') return `<video src="${media.src}" muted playsinline preload="metadata"></video>`;
+    if (media.type === 'gallery' && media.items && media.items.length) return `<img src="${media.items[0]}" alt="" loading="lazy">`;
+    return '<span></span>';
+  }
+
+  function getLightbox() {
+    let lb = document.getElementById('media-lightbox');
+    if (lb) return lb;
+    lb = document.createElement('div');
+    lb.id = 'media-lightbox';
+    lb.className = 'lightbox-overlay hidden';
+    lb.innerHTML = `
+      <button class="lightbox-close" type="button" aria-label="Close full view">&times;</button>
+      <div class="lightbox-inner"></div>
+    `;
+    document.body.appendChild(lb);
+    lb.addEventListener('click', (e) => {
+      if (e.target === lb) closeLightbox();
+    });
+    lb.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+    });
+    return lb;
+  }
+
+  function closeLightbox() {
+    const lb = document.getElementById('media-lightbox');
+    if (!lb) return;
+    lb.classList.add('hidden');
+    lb.querySelector('.lightbox-inner').innerHTML = '';
+  }
+
+  function openLightboxImage(src) {
+    const lb = getLightbox();
+    lb.querySelector('.lightbox-inner').innerHTML = `<img src="${src}" alt="">`;
+    lb.classList.remove('hidden');
+  }
+
+  function openLightboxVideo(src) {
+    const lb = getLightbox();
+    lb.querySelector('.lightbox-inner').innerHTML = `<video src="${src}" controls autoplay playsinline></video>`;
+    lb.classList.remove('hidden');
+  }
+
+  function renderModalMedia(media) {
+    const container = document.querySelector('.modal-media-placeholder');
+    if (!container) return;
+    container.innerHTML = '';
+    container.classList.remove('has-gallery');
+
+    if (!media) {
+      container.classList.remove('has-media');
+      container.innerHTML = '<span class="play-icon">▶</span>';
+      return;
+    }
+
+    container.classList.add('has-media');
+
+    if (media.type === 'image') {
+      container.innerHTML = `<img src="${media.src}" alt="">`;
+      container.querySelector('img').addEventListener('click', () => openLightboxImage(media.src));
+    } else if (media.type === 'video') {
+      container.innerHTML = `<video src="${media.src}" controls playsinline></video>`;
+    } else if (media.type === 'gallery' && media.items && media.items.length) {
+      container.classList.add('has-gallery');
+      const track = document.createElement('div');
+      track.className = 'gallery-track';
+      media.items.forEach(src => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.loading = 'lazy';
+        img.addEventListener('click', () => openLightboxImage(src));
+        track.appendChild(img);
+      });
+
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'gallery-arrow gallery-prev';
+      prevBtn.type = 'button';
+      prevBtn.setAttribute('aria-label', 'Previous image');
+      prevBtn.innerHTML = '←';
+      prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' });
+      });
+
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'gallery-arrow gallery-next';
+      nextBtn.type = 'button';
+      nextBtn.setAttribute('aria-label', 'Next image');
+      nextBtn.innerHTML = '→';
+      nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
+      });
+
+      container.appendChild(track);
+      container.appendChild(prevBtn);
+      container.appendChild(nextBtn);
+    } else {
+      container.classList.remove('has-media');
+      container.innerHTML = '<span class="play-icon">▶</span>';
+    }
+  }
+
   for (let i = 0; i < projectCount; i++) {
     const mesh = new THREE.Mesh(new RoundedBoxGeometry(6.75, 9.75, 0.6, 4, 0.3), new THREE.MeshStandardMaterial({ color: projectColors[i % projectColors.length], roughness: 0.2, metalness: 0.1 }));
     
@@ -765,19 +940,19 @@ if (portraitCard) {
     
     const data = projectsData[i];
     cardContent.innerHTML = `
-      <div class="project-card-media"><span>🖼️</span></div>
+      <div class="project-card-media">${getCardMediaHTML(data.media)}</div>
       <div class="project-card-text">
         <h3>${data.title}</h3>
         <p>${data.desc}</p>
         <button class="card-btn view-details-btn">VIEW DETAILS</button>
       </div>
     `;
-    
+
     const cssObject = new CSS3DObject(cardContent);
     cssObject.scale.set(0.021, 0.021, 0.021);
     cssObject.position.set(0, 0, 0.31);
     mesh.add(cssObject);
-    
+
     const btn = cardContent.querySelector('.view-details-btn');
     btn.addEventListener('click', () => {
       document.getElementById('modal-title').innerText = data.title;
@@ -789,6 +964,19 @@ if (portraitCard) {
         span.innerText = t;
         techContainer.appendChild(span);
       });
+      renderModalMedia(data.media);
+
+      const demoBtn = document.querySelector('.modal-demo-btn');
+      if (demoBtn) {
+        if (data.demoVideo) {
+          demoBtn.style.display = '';
+          demoBtn.onclick = () => openLightboxVideo(data.demoVideo);
+        } else {
+          demoBtn.style.display = 'none';
+          demoBtn.onclick = null;
+        }
+      }
+
       document.getElementById('project-modal').classList.remove('hidden');
     });
 
@@ -839,15 +1027,27 @@ if (portraitCard) {
   if(closeModalBtn) closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
 }
 
-// ==========================================
-// ANIMATION LOOP
-// ==========================================
+// Animation Loop
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(animationClock.getDelta(), 0.05);
 
   stars.rotation.y += 0.0005;
   stars.rotation.x += 0.0002;
+
+  // Falling banana rain
+  if (bananaInstances.length) {
+    bananaInstances.forEach((banana) => {
+      banana.position.y -= banana.userData.fallSpeed;
+      banana.rotation.x += banana.userData.spinSpeed;
+      banana.rotation.y += banana.userData.spinSpeed * 1.4;
+      if (banana.position.y < -30) {
+        banana.position.y = 30 + Math.random() * 10;
+        banana.position.x = Math.random() * 50 - 25;
+        banana.position.z = Math.random() * 20 - 15;
+      }
+    });
+  }
 
   // Orbiting satellite light
   const time = Date.now() * 0.0015;
@@ -887,16 +1087,24 @@ function animate() {
     
     skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
 
-    // Animate the centre model: spin + gentle bob
+    // spin the model slowly and give it a gentle bob
     if (memberModelGroup) {
       memberModelGroup.rotation.y += 0.008;
       const bobTime = animationClock.elapsedTime;
-      memberModelGroup.position.y = -0.5 + Math.sin(bobTime * 1.8) * 0.8;
+      memberModelGroup.position.y = -modelCenterY + modelYOffset + Math.sin(bobTime * 1.8) * 0.8;
+
+      if (minionBubbleEl) {
+        const headPos = new THREE.Vector3(0, modelTopY + 1.5, 0);
+        headPos.applyMatrix4(memberModelGroup.matrixWorld);
+        headPos.project(camera);
+        minionBubbleEl.style.left = (headPos.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        minionBubbleEl.style.top = (headPos.y * -0.5 + 0.5) * window.innerHeight + 'px';
+      }
     } else {
       globe.rotation.y += 0.005;
       globe.rotation.x += 0.002;
     }
-    
+
     skillObjects.forEach((obj, i) => {
       obj.mesh.position.y = obj.baseY + Math.sin(Date.now() * 0.002 + i) * 0.5;
       const vector = obj.mesh.position.clone();
@@ -925,3 +1133,29 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+window.__checkBubble = () => {
+  const rect = document.getElementById('member-skills').getBoundingClientRect();
+  const viewportCenter = window.innerHeight / 2;
+  const spacerCenter = rect.top + (rect.height / 2) - 40;
+  const unitPerPixel = (2 * 30 * Math.tan(THREE.MathUtils.degToRad(75 / 2))) / window.innerHeight;
+  skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
+  memberModelGroup.position.y = -modelCenterY + modelYOffset;
+  scene.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(memberModelGroup);
+  const topWorld = new THREE.Vector3(0, box.max.y, 0);
+  topWorld.project(camera);
+  const topScreenY = (topWorld.y * -0.5 + 0.5) * window.innerHeight;
+
+  const headPos = new THREE.Vector3(0, modelTopY + 1.5, 0);
+  headPos.applyMatrix4(memberModelGroup.matrixWorld);
+  headPos.project(camera);
+  const bubbleScreenY = (headPos.y * -0.5 + 0.5) * window.innerHeight;
+
+  return JSON.stringify({
+    headTopScreenY: topScreenY, bubbleAnchorScreenY: bubbleScreenY, gap: topScreenY - bubbleScreenY,
+    boxMinY: box.min.y, boxMaxY: box.max.y, groupWorldY: memberModelGroup.position.y, skillsGroupY: skillsGroup.position.y,
+    modelCenterY, modelTopY
+  });
+};

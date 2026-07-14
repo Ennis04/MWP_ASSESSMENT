@@ -9,19 +9,22 @@
   <body id="member-page" class="ennis-page">
     <canvas id="bg"></canvas>
 
-    <!-- DATA CONFIGURATION -->
-    <!-- Members ONLY need to edit this block to update their 3D text! -->
     <script>
       window.MEMBER_DATA = {
         name: "Chua Lin Wei",
         role: "Data Analytics",
-        model: "/maxwell_the_cat_dingus.glb",
+        model: "/chuamedia/minion.glb",
+        modelYOffset: -4.5,
+        clickSound: "/chuamedia/minionsound.mp3",
+        clickMessage: "Click me, bananana",
+        rainModel: "/chuamedia/banana.glb",
+        rainCount: 24,
         skills: ['FIGMA', 'ADOBE PS', 'POWER BI', 'PYTHON', 'CSS', 'SCRUM MASTER'],
         projects: [
-          { title: "Penang Heritage Trust (PHT) New Web System", desc: "Serving as Scrum Master, Product Owner and full-stack developer for Penang Heritage Trust’s website redevelopment initiative.", tech: ["Scrum Master", "Product Owner", "Full-Stack"] },
-          { title: "Attendr (Anti-fraud Attendance System)", desc: "Developed a secure attendance solution using AI techniques such as Face Recognition, Classroom Geolocation, and Dynamic Code Refresh to eliminate fraudulent check-ins.", tech: ["Full-Stack", "AI", "User Testing"] },
-          { title: "Raytech X-RAY Web Design", desc: "Designed and built a corporate X-Ray website with focus on UI/UX and brand presentation. ", tech: ["Wordpress", "DNS", "UI/UX"] },
-          { title: "Zoo-Negara Ticket System", desc: "Optimizing the ticketing system", tech: ["Front-End", "Wireframing", "Figma"] }
+          { title: "Penang Heritage Trust (PHT) New Web System", desc: "Serving as Scrum Master, Product Owner and full-stack developer for Penang Heritage Trust’s website redevelopment initiative.", tech: ["Scrum Master", "Product Owner", "Full-Stack"], media: { type: "image", src: "/chuamedia/phthome.jpeg" }, demoVideo: "/chuamedia/pht.mp4" },
+          { title: "Attendr (Anti-fraud Attendance System)", desc: "Developed a secure attendance solution using AI techniques such as Face Recognition, Classroom Geolocation, and Dynamic Code Refresh to eliminate fraudulent check-ins.", tech: ["Full-Stack", "AI", "User Testing"], media: { type: "gallery", items: ["/chuamedia/attendr1.jpg", "/chuamedia/attendr2.jpg", "/chuamedia/attendr3.jpg", "/chuamedia/attendr4.jpg"] } },
+          { title: "Raytech X-RAY Web Design", desc: "Designed and built a corporate X-Ray website with focus on UI/UX and brand presentation. ", tech: ["Wordpress", "DNS", "UI/UX"], media: { type: "image", src: "/chuamedia/raytech.jpeg" } },
+          { title: "Zoo-Negara Ticket System", desc: "Optimizing the ticketing system", tech: ["Front-End", "Wireframing", "Figma"], media: { type: "image", src: "/chuamedia/zoonegara.png" } }
         ]
       };
     </script>
@@ -118,8 +121,8 @@
           <div class="contact-intro">
             <p>Have an idea, collaboration or opportunity in mind? I’d love to hear about it.</p>
             <div class="contact-links">
-              <a href="mailto:chua@example.com"><span>Email</span><strong>chua@example.com</strong><i>↗</i></a>
-              <a href="https://linkedin.com/in/chua" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/chua</strong><i>↗</i></a>
+              <a href="mailto:chuawei@graduate.utm.my"><span>Email</span><strong>chuawei@graduate.utm.my</strong><i>↗</i></a>
+              <a href="https://www.linkedin.com/in/chualinwei/" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>https://www.linkedin.com/in/chualinwei/</strong><i>↗</i></a>
             </div>
           </div>
 
