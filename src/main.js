@@ -1,4 +1,3 @@
-import './style.css';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
@@ -8,19 +7,24 @@ import gsap from 'gsap';
 const isIndexPage = document.getElementById('index-page') !== null;
 const isMemberPage = document.getElementById('member-page') !== null;
 
-//Scene Setup
-
+// ==========================================
+// 1. SCENE SETUP
+// ==========================================
 const canvas = document.querySelector('#bg');
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 30;
 
-const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  alpha: true,
+  antialias: true,
+  powerPreference: 'high-performance'
+});
+const maxRenderPixelRatio = 1.75;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRenderPixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = true;
 
 const cssRenderer = new CSS3DRenderer();
 cssRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -31,49 +35,36 @@ cssRenderer.domElement.style.pointerEvents = 'none';
 cssRenderer.domElement.style.zIndex = '50';
 document.body.appendChild(cssRenderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(10, 20, 10);
-dirLight.castShadow = true;
 scene.add(dirLight);
 
 const fillLight = new THREE.DirectionalLight(0xffd0a0, 0.6);
 fillLight.position.set(-10, 5, -5);
 scene.add(fillLight);
 
-// The orbiting light is now just a group to hold the bone, so it doesn't cast purple light
+// The orbiting group carries the bone without casting a purple point light.
 const orbitingLight = new THREE.Group();
 if (isIndexPage) scene.add(orbitingLight);
 
-// Add a cute cartoon bone instead of a satellite
+// Cartoon bone orbiting the dog on the landing page.
 const satellite = new THREE.Group();
-const boneMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.1 });
+const boneMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.1 });
+const boneShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2, 16), boneMaterial);
+boneShaft.rotation.z = Math.PI / 2;
+satellite.add(boneShaft);
 
-// Shaft
-const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2, 16), boneMat);
-shaft.rotation.z = Math.PI / 2;
-satellite.add(shaft);
-
-// Ends
-const endGeo = new THREE.SphereGeometry(0.5, 16, 16);
-const end1 = new THREE.Mesh(endGeo, boneMat);
-end1.position.set(1.1, 0.3, 0);
-satellite.add(end1);
-
-const end2 = new THREE.Mesh(endGeo, boneMat);
-end2.position.set(1.1, -0.3, 0);
-satellite.add(end2);
-
-const end3 = new THREE.Mesh(endGeo, boneMat);
-end3.position.set(-1.1, 0.3, 0);
-satellite.add(end3);
-
-const end4 = new THREE.Mesh(endGeo, boneMat);
-end4.position.set(-1.1, -0.3, 0);
-satellite.add(end4);
-
+const boneEndGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+[
+  [1.1, 0.3], [1.1, -0.3], [-1.1, 0.3], [-1.1, -0.3]
+].forEach(([x, y]) => {
+  const boneEnd = new THREE.Mesh(boneEndGeometry, boneMaterial);
+  boneEnd.position.set(x, y, 0);
+  satellite.add(boneEnd);
+});
 
 orbitingLight.add(satellite);
 
@@ -93,23 +84,25 @@ scene.add(stars);
 const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8, metalness: 0.2 });
 
 // ==========================================
-// INDEX PAGE
+// GLOBALS FOR INDEX PAGE
 // ==========================================
-let dogGroup, dogMixer, dogBaseY = 0, scrollProgress = 0;
-let targetRotationY = -0.8;
-let isDragging = false;
-let previousMouseX = 0;
-const animationClock = new THREE.Clock();
+let planetGroup, dogModel, dogMixer;
 let carouselGroup, cuboids = [];
+const indexModelMixers = [];
+const indexModelAnimationClock = new THREE.Clock();
 const memberCount = 4;
 
-// Member information
-
+// Member information used by the About Us carousel.
+// To add your own photos:
+// 1. Put the image files in public/members/.
+// 2. Update each image path below. Square or portrait images work best.
+// Teammates can enable their model by placing a GLB in public/ and filling these model fields.
+// Keep model as an empty string to retain the normal photo-only behaviour.
 const indexMemberData = [
-  { name: "Ennis Lam Si Hoong", role: "Student", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Passionate about interactive web design. Aspires to build immersive 3D frontend applications.", ach: "Dean's List 2023, completed Advanced Web UI/UX Bootcamp." },
-  { name: "Liew Choon Pang", role: "Student", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023, AWS Cloud Practitioner." },
-  { name: "Chua Lin Wei", role: "Student", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Eager to learn user-centric design principles. Aims to create accessible and beautiful digital tools.", ach: "Top 10 in Campus Design Challenge, Google UX Design Certificate." },
-  { name: "Tai Yi Tian", role: "Student", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA with 3.93" }
+  { name: "Ennis Lam Si Hoong", role: "Software Engineer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "UI/UX, Web Development, IoT", asp: "Create immersive worlds", ach: "ROBOCON MALAYSIA 2025 – Champion & Best Engineering Award", cert: "Anugerah Insan Terbilang Negeri Sembilan", model: "/ennis/bananacat.glb", modelName: "Banana Cat", modelDescription: "Banana Cat is a famous meme in the Intenet. The reason I choose it as my model is that it is cute and always positve and energetic." },
+  { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023", cert: "AWS Cloud Practitioner", model: "/liew/panda_head_meme.glb", modelName: "Panda Head Meme", modelDescription: "A 3D panda meme model featured in Liew's portfolio." },
+  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Figma, Adobe Photoshop, Power BI, Python, CSS, Scrum", asp: "Eager to learn user-centric design principles. Aims to create accessible and beautiful digital tools.", ach: "Top 10 in Campus Design Challenge", cert: "Google UX Design Certificate", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with Chua's banana-themed interaction and sound." },
+  { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Tai's animated Oiia cat model with its original sound effect." }
 ];
 
 const memberPhotoCanvasWidth = 800;
@@ -227,19 +220,19 @@ function createCenteredPhotoTexture(image) {
 }
 
 if (isIndexPage) {
-  // Load the dog textures with correct orientation
-  // The GLB uses the KHR_materials_pbrSpecularGlossiness extension so we manually
-  // apply the embedded textures from the supplied texture folder.
-  const textureLoader = new THREE.TextureLoader();
+  // Dog landing model replacing the previous Saturn scene.
+  planetGroup = new THREE.Group();
+  planetGroup.position.set(10, 0, 0);
+  scene.add(planetGroup);
 
+  const textureLoader = new THREE.TextureLoader();
+  const indexModelLoader = new GLTFLoader();
   const dogTexture = textureLoader.load('/baby-dog/textures/gltf_embedded_0.png');
+  const dogNormal = textureLoader.load('/baby-dog/textures/gltf_embedded_2.png');
+  const dogAO = textureLoader.load('/baby-dog/textures/gltf_embedded_3@channels=R.png');
   dogTexture.colorSpace = THREE.SRGBColorSpace;
   dogTexture.flipY = true;
-
-  const dogNormal = textureLoader.load('/baby-dog/textures/gltf_embedded_2.png');
   dogNormal.flipY = true;
-
-  const dogAO = textureLoader.load('/baby-dog/textures/gltf_embedded_3@channels=R.png');
   dogAO.flipY = true;
 
   const dogMaterial = new THREE.MeshStandardMaterial({
@@ -250,50 +243,34 @@ if (isIndexPage) {
     metalness: 0.1
   });
 
-  const dogLoader = new GLTFLoader();
-  dogLoader.load(
+  indexModelLoader.load(
     '/baby-dog/source/baby%20dog.glb',
     (gltf) => {
-      dogGroup = gltf.scene;
-      dogGroup.position.set(0, 0, 0);
-
-      // Normalise any model dimensions so different exports sit consistently in the scene.
-      const bounds = new THREE.Box3().setFromObject(dogGroup);
+      dogModel = gltf.scene;
+      dogModel.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(dogModel, true);
       const size = bounds.getSize(new THREE.Vector3());
-      const center = bounds.getCenter(new THREE.Vector3());
-      // Make the dog bigger and center it on the right side of the viewport.
-      // Scale 22 fills the right panel nicely; x=11 places it at the right-half centre.
-      const scale = 22 / Math.max(size.x, size.y, size.z);
-      dogGroup.scale.setScalar(scale);
-      // Center horizontally at x=11 (right side), vertically centre the model in view
-      const modelHeight = size.y * scale;
-      dogGroup.position.set(11 - center.x * scale, -center.y * scale, -center.z * scale);
-      dogGroup.rotation.y = targetRotationY;
-      dogBaseY = dogGroup.position.y;
+      const centre = bounds.getCenter(new THREE.Vector3());
+      const scale = 20 / Math.max(size.x, size.y, size.z, 1);
+      dogModel.scale.setScalar(scale);
+      dogModel.position.set(-centre.x * scale, -centre.y * scale, -centre.z * scale);
+      dogModel.rotation.y = -0.2;
 
-      dogGroup.traverse((node) => {
+      dogModel.traverse((node) => {
         if (!node.isMesh) return;
-        node.castShadow = true;
-        node.receiveShadow = true;
         node.material = dogMaterial;
       });
+      planetGroup.add(dogModel);
 
-      scene.add(dogGroup);
-
-      // Play the standing skeletal animation
-      if (gltf.animations && gltf.animations.length > 0) {
-        dogMixer = new THREE.AnimationMixer(dogGroup);
-        const standingClip = gltf.animations.find(a => a.name === 'standing') || gltf.animations[0];
-        const action = dogMixer.clipAction(standingClip);
-        action.play();
+      const standingClip = gltf.animations.find((clip) => /standing|idle/i.test(clip.name))
+        || gltf.animations[0];
+      if (standingClip) {
+        dogMixer = new THREE.AnimationMixer(dogModel);
+        dogMixer.clipAction(standingClip).setLoop(THREE.LoopRepeat, Infinity).play();
       }
     },
     undefined,
-    () => {
-      // Keep the lightweight in-scene fallback visible during local development if
-      // the asset has not been copied into public yet.
-      console.warn('Dog model not found: check public/baby-dog/source/baby dog.glb.');
-    }
+    (error) => console.error('Unable to load the landing-page dog model.', error)
   );
 
   // Carousel
@@ -343,6 +320,60 @@ if (isIndexPage) {
     // carousel is intentionally positioned to the left of the camera.
     photo.position.set(0.065, 0, (cardDepth / 2) + 0.012);
     card.add(photo);
+    card.userData.memberPhoto = photo;
+
+    if (member.model) {
+      const modelBackdrop = new THREE.Mesh(
+        new THREE.PlaneGeometry(photoWidth, photoHeight),
+        new THREE.MeshBasicMaterial({ color: 0x07070d, toneMapped: false })
+      );
+      modelBackdrop.position.set(0.065, 0, (cardDepth / 2) + 0.014);
+      modelBackdrop.visible = false;
+      card.add(modelBackdrop);
+
+      const modelContainer = new THREE.Group();
+      modelContainer.position.set(0.065, 0, (cardDepth / 2) + 0.45);
+      modelContainer.visible = false;
+      modelContainer.userData.ready = false;
+      card.add(modelContainer);
+
+      card.userData.modelBackdrop = modelBackdrop;
+      card.userData.modelContainer = modelContainer;
+
+      indexModelLoader.load(
+        member.model,
+        (gltf) => {
+          const model = gltf.scene;
+          const displayClip = gltf.animations.find((clip) => /(^|\|)h+i+$/i.test(clip.name))
+            || gltf.animations[0];
+
+          if (displayClip) {
+            const modelMixer = new THREE.AnimationMixer(model);
+            const displayAction = modelMixer.clipAction(displayClip);
+            displayAction.setLoop(THREE.LoopRepeat, Infinity).play();
+            indexModelMixers.push(modelMixer);
+            modelMixer.update(0);
+          }
+
+          model.updateMatrixWorld(true);
+          const initialBounds = new THREE.Box3().setFromObject(model, true);
+          const initialSize = initialBounds.getSize(new THREE.Vector3());
+          const largestDimension = Math.max(initialSize.x, initialSize.y, initialSize.z);
+
+          if (largestDimension > 0) model.scale.setScalar(6.4 / largestDimension);
+
+          model.updateMatrixWorld(true);
+          const scaledBounds = new THREE.Box3().setFromObject(model, true);
+          const modelCentre = scaledBounds.getCenter(new THREE.Vector3());
+          model.position.sub(modelCentre);
+          model.updateMatrixWorld(true);
+          modelContainer.add(model);
+          modelContainer.userData.ready = true;
+        },
+        undefined,
+        (error) => console.error(`Unable to load index model: ${member.model}`, error)
+      );
+    }
 
     // If the configured image cannot be found, the initials texture remains visible.
     textureLoader.load(
@@ -372,9 +403,9 @@ if (isIndexPage) {
       else { targetX = 0; targetZ = -6; targetRotY = 0; targetScale = 0.6; }
       
       if (animate) {
-        gsap.to(mesh.position, { x: targetX, z: targetZ, duration: 0.8, ease: "power2.out" });
-        gsap.to(mesh.rotation, { y: targetRotY, duration: 0.8, ease: "power2.out" });
-        gsap.to(mesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.8, ease: "power2.out" });
+        gsap.to(mesh.position, { x: targetX, z: targetZ, duration: 0.5, ease: "power2.out", overwrite: 'auto' });
+        gsap.to(mesh.rotation, { y: targetRotY, duration: 0.5, ease: "power2.out", overwrite: 'auto' });
+        gsap.to(mesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.5, ease: "power2.out", overwrite: 'auto' });
       } else {
         mesh.position.set(targetX, 0, targetZ);
         mesh.rotation.y = targetRotY;
@@ -386,19 +417,18 @@ if (isIndexPage) {
 
   // Scroll Interaction
   function moveCamera() {
-    const t = document.body.getBoundingClientRect().top;
+    const t = -window.scrollY;
     const vh = window.innerHeight;
     const progress = Math.min(Math.max(-t / vh, 0), 1);
-    scrollProgress = progress;
-    if (dogGroup) dogGroup.position.y = dogBaseY + progress * 30;
+    planetGroup.position.y = progress * 30;
     carouselGroup.position.y = -50 + (progress * 50);
     camera.position.z = 30 - (progress * 18); 
     carouselGroup.position.x = -7.5; 
     
-    // Hide the bone when scrolling away from Landing Page
-    satellite.visible = progress < 0.1; 
+    // Hide the bone when scrolling away from the landing page.
+    satellite.visible = progress < 0.1;
   }
-  document.body.onscroll = moveCamera;
+  window.addEventListener('scroll', moveCamera, { passive: true });
   moveCamera();
 
   // DOM Click Logic
@@ -406,14 +436,50 @@ if (isIndexPage) {
   const nextBtn = document.getElementById('next-member');
   const dots = document.querySelectorAll('.dot');
   const detailBtn = document.getElementById('detail-btn');
+  const detailItems = Array.from(document.querySelectorAll('.details-list li'));
+  const detailLabels = ['Education:', 'Career Interests:', 'Aspirations:', 'Achievements:', 'Certifications:'];
+  const memberInfoPanel = document.querySelector('.member-info');
+  const indexCardRaycaster = new THREE.Raycaster();
+  const indexCardPointer = new THREE.Vector2();
+  let modelViewIndex = null;
 
   function updateMemberInfo(index) {
     const data = indexMemberData[index];
-    document.getElementById('member-name').innerText = data.name;
-    document.getElementById('member-role').innerText = data.role;
-    document.getElementById('member-education').innerText = data.ed;
-    document.getElementById('member-aspirations').innerText = data.asp;
-    document.getElementById('member-achievements').innerText = data.ach;
+    const isModelView = modelViewIndex === index;
+
+    memberInfoPanel?.classList.toggle('is-model-view', isModelView);
+
+    detailItems.forEach((item, itemIndex) => {
+      item.hidden = false;
+      const label = item.querySelector('strong');
+      if (label) label.innerText = detailLabels[itemIndex];
+    });
+    if (detailBtn) {
+      detailBtn.hidden = false;
+    }
+
+    if (isModelView) {
+      if (memberInfoPanel?.dataset.profileHeight) {
+        memberInfoPanel.style.minHeight = `${memberInfoPanel.dataset.profileHeight}px`;
+      }
+      document.getElementById('member-name').innerText = data.modelName;
+      document.getElementById('member-role').innerText = '3D MODEL';
+      document.getElementById('member-education').innerText = data.modelDescription;
+
+      const descriptionLabel = detailItems[0]?.querySelector('strong');
+      if (descriptionLabel) descriptionLabel.innerText = 'Model Description:';
+      detailItems.slice(1).forEach(item => { item.hidden = true; });
+      if (detailBtn) detailBtn.hidden = true;
+    } else {
+      if (memberInfoPanel) memberInfoPanel.style.minHeight = '';
+      document.getElementById('member-name').innerText = data.name;
+      document.getElementById('member-role').innerText = data.role;
+      document.getElementById('member-education').innerText = data.ed;
+      document.getElementById('member-interests').innerText = data.int;
+      document.getElementById('member-aspirations').innerText = data.asp;
+      document.getElementById('member-achievements').innerText = data.ach;
+      document.getElementById('member-certs').innerText = data.cert;
+    }
     
     dots.forEach((dot, i) => {
       if (i === index) dot.classList.add('active');
@@ -421,21 +487,60 @@ if (isIndexPage) {
     });
   }
 
+  function setModelView(index, enabled) {
+    const card = cuboids[index];
+    const modelContainer = card?.userData.modelContainer;
+    const modelBackdrop = card?.userData.modelBackdrop;
+    const memberPhoto = card?.userData.memberPhoto;
+
+    if (enabled && (!modelContainer || !modelContainer.userData.ready)) return;
+
+    if (enabled && memberInfoPanel) {
+      memberInfoPanel.dataset.profileHeight = memberInfoPanel.getBoundingClientRect().height;
+    }
+
+    modelViewIndex = enabled ? index : null;
+    updateMemberInfo(index);
+    if (memberPhoto) memberPhoto.visible = !enabled;
+    if (modelBackdrop) modelBackdrop.visible = enabled;
+    if (modelContainer) modelContainer.visible = enabled;
+  }
+
+  function closeModelView() {
+    if (modelViewIndex !== null) setModelView(modelViewIndex, false);
+  }
+
   function rotateCarousel(direction) {
+    closeModelView();
     if (direction === 'next') currentMemberIndex = (currentMemberIndex + 1) % memberCount;
     else currentMemberIndex = (currentMemberIndex - 1 + memberCount) % memberCount;
     updateCarouselPositions(currentMemberIndex, true);
-    setTimeout(() => updateMemberInfo(currentMemberIndex), 300);
+    updateMemberInfo(currentMemberIndex);
   }
 
   if(prevBtn) prevBtn.addEventListener('click', () => rotateCarousel('prev'));
   if(nextBtn) nextBtn.addEventListener('click', () => rotateCarousel('next'));
   dots.forEach((dot, index) => {
     dot.addEventListener('click', () => {
+      closeModelView();
       currentMemberIndex = index;
       updateCarouselPositions(currentMemberIndex, true);
       updateMemberInfo(currentMemberIndex);
     });
+  });
+
+  window.addEventListener('pointerup', (event) => {
+    if (event.target.closest?.('.member-info, button, a, input, textarea, .dots')) return;
+
+    const activeCard = cuboids[currentMemberIndex];
+    if (!activeCard?.userData.modelContainer?.userData.ready) return;
+
+    indexCardPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    indexCardPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    indexCardRaycaster.setFromCamera(indexCardPointer, camera);
+
+    if (indexCardRaycaster.intersectObject(activeCard, true).length === 0) return;
+    setModelView(currentMemberIndex, modelViewIndex !== currentMemberIndex);
   });
 
   if(detailBtn) {
@@ -445,68 +550,29 @@ if (isIndexPage) {
   }
   
   updateMemberInfo(0);
-
-  // --- Dog 360-degree Drag Rotation Controls ---
-  window.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    previousMouseX = e.clientX;
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isDragging || !dogGroup) return;
-    const deltaX = e.clientX - previousMouseX;
-    previousMouseX = e.clientX;
-    targetRotationY += deltaX * 0.007;
-  });
-
-  window.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
-
-  window.addEventListener('mouseleave', () => {
-    isDragging = false;
-  });
-
-  // Touch controls for mobile support
-  window.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 0) {
-      isDragging = true;
-      previousMouseX = e.touches[0].clientX;
-    }
-  }, { passive: true });
-
-  window.addEventListener('touchmove', (e) => {
-    if (!isDragging || !dogGroup || e.touches.length === 0) return;
-    const deltaX = e.touches[0].clientX - previousMouseX;
-    previousMouseX = e.touches[0].clientX;
-    targetRotationY += deltaX * 0.007;
-  }, { passive: true });
-
-  window.addEventListener('touchend', () => {
-    isDragging = false;
-  });
 }
 
 // ==========================================
 // GLOBALS FOR MEMBER PAGE
 // ==========================================
 let skillsGroup, globe, skillObjects = [];
-let memberModelGroup = null, memberModelMixer = null;
+let skillsModelMixer = null;
+let keepSkillsModelUpright = false;
+let skillsModelRoot = null;
+let skillsIdleAction = null;
+let skillsWalkAction = null;
+let skillsModelIsWalking = false;
+let skillsWalkSound = null;
+let skillsBubbleEl = null;
+const decorativeModels = [];
+const skillsAnimationClock = new THREE.Clock();
+const skillsRaycaster = new THREE.Raycaster();
+const skillsPointer = new THREE.Vector2();
 let projectsGroup, projectCuboids = [];
 let projectCount = 0;
-let modelYOffset = 0;
-let modelCenterY = 0;
-let modelTopY = 6;
-let bananaInstances = [];
-let minionBubbleEl = null, minionAudio = null;
-const bananaRainGroup = new THREE.Group();
-scene.add(bananaRainGroup);
-const modelRaycaster = new THREE.Raycaster();
-const pointerNDC = new THREE.Vector2();
 
 if (isMemberPage && window.MEMBER_DATA) {
   const mData = window.MEMBER_DATA;
-  modelYOffset = mData.modelYOffset || 0;
 
   // Update header automatically
   const nameEl = document.getElementById('detail-name');
@@ -515,316 +581,178 @@ if (isMemberPage && window.MEMBER_DATA) {
   const roleEl = document.getElementById('detail-role');
   if(roleEl) roleEl.innerText = mData.role;
 
-
-//portrait card interaction
-const portraitCard = document.querySelector('.portrait-card');
-
-if (portraitCard) {
-  const maxTilt = 20;
-
-  let currentTiltX = 0;
-  let currentTiltY = 0;
-  let targetTiltX = 0;
-  let targetTiltY = 0;
-
-  let animationFrame = null;
-  let isPortraitDragging = false;
-  let portraitBounds = null;
-
-  // These styles improve mouse and touch interaction.
-  portraitCard.style.cursor = 'grab';
-  portraitCard.style.touchAction = 'none';
-  portraitCard.style.userSelect = 'none';
-  portraitCard.style.willChange = 'transform';
-  portraitCard.style.transformStyle = 'preserve-3d';
-
-  function animatePortraitTilt() {
-    // Smoothly move towards the target rotation.
-    currentTiltX += (targetTiltX - currentTiltX) * 0.14;
-    currentTiltY += (targetTiltY - currentTiltY) * 0.14;
-
-    // Slightly enlarge the card while it is tilting.
-    const tiltAmount = Math.min(
-      (Math.abs(currentTiltX) + Math.abs(currentTiltY)) / maxTilt,
-      1
-    );
-
-    const scale = 1 + tiltAmount * 0.025;
-
-    portraitCard.style.transform = `
-      perspective(1100px)
-      rotateX(${currentTiltX}deg)
-      rotateY(${currentTiltY}deg)
-      scale3d(${scale}, ${scale}, ${scale})
-    `;
-
-    const stillMoving =
-      Math.abs(targetTiltX - currentTiltX) > 0.02 ||
-      Math.abs(targetTiltY - currentTiltY) > 0.02;
-
-    if (stillMoving) {
-      animationFrame = requestAnimationFrame(animatePortraitTilt);
-    } else {
-      animationFrame = null;
-    }
-  }
-
-  function startTiltAnimation() {
-    if (animationFrame === null) {
-      animationFrame = requestAnimationFrame(animatePortraitTilt);
-    }
-  }
-
-  function updatePortraitTilt(event) {
-    const rect =
-      portraitBounds || portraitCard.getBoundingClientRect();
-
-    // Convert pointer position into values between -1 and 1.
-    const pointerX = Math.max(
-      -1,
-      Math.min(
-        1,
-        ((event.clientX - rect.left) / rect.width) * 2 - 1
-      )
-    );
-
-    const pointerY = Math.max(
-      -1,
-      Math.min(
-        1,
-        ((event.clientY - rect.top) / rect.height) * 2 - 1
-      )
-    );
-
-    // Limit rotation to 20 degrees.
-    targetTiltX = -pointerY * maxTilt;
-    targetTiltY = pointerX * maxTilt;
-
-    startTiltAnimation();
-  }
-
-  function resetPortraitTilt() {
-    targetTiltX = 0;
-    targetTiltY = 0;
-    portraitCard.style.cursor = 'grab';
-
-    startTiltAnimation();
-  }
-
-  // Desktop hover
-  portraitCard.addEventListener('pointerenter', (event) => {
-    portraitBounds = portraitCard.getBoundingClientRect();
-    updatePortraitTilt(event);
-  });
-
-  portraitCard.addEventListener('pointermove', (event) => {
-    updatePortraitTilt(event);
-  });
-
-  // Mouse and touch dragging
-  portraitCard.addEventListener('pointerdown', (event) => {
-    isPortraitDragging = true;
-    portraitBounds =
-      portraitBounds || portraitCard.getBoundingClientRect();
-
-    portraitCard.style.cursor = 'grabbing';
-    portraitCard.setPointerCapture(event.pointerId);
-
-    updatePortraitTilt(event);
-  });
-
-  portraitCard.addEventListener('pointerup', (event) => {
-    isPortraitDragging = false;
-    portraitCard.style.cursor = 'grab';
-
-    if (portraitCard.hasPointerCapture(event.pointerId)) {
-      portraitCard.releasePointerCapture(event.pointerId);
-    }
-
-    const rect =
-      portraitBounds || portraitCard.getBoundingClientRect();
-
-    const pointerInside =
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom;
-
-    // Touch always returns to normal.
-    // Mouse remains tilted if it is still hovering over the card.
-    if (event.pointerType !== 'mouse' || !pointerInside) {
-      portraitBounds = null;
-      resetPortraitTilt();
-    }
-  });
-
-  portraitCard.addEventListener('pointerleave', () => {
-    if (!isPortraitDragging) {
-      portraitBounds = null;
-      resetPortraitTilt();
-    }
-  });
-
-  portraitCard.addEventListener('pointercancel', () => {
-    isPortraitDragging = false;
-    portraitBounds = null;
-    resetPortraitTilt();
-  });
-}
-
   // Skills Scene
   skillsGroup = new THREE.Group();
   scene.add(skillsGroup);
 
-  // If this member page supplies a custom GLB model, load it in place of the globe.
-  if (mData.model) {
-    const memberLoader = new GLTFLoader();
-    memberLoader.load(
-      mData.model,
+  globe = new THREE.Group();
+  skillsGroup.add(globe);
+
+  const addFallbackSphere = () => {
+    keepSkillsModelUpright = false;
+    const fallbackSphere = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(7.5, 2),
+      new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true })
+    );
+    globe.add(fallbackSphere);
+  };
+
+  const memberModelPath = mData.skillsModel || mData.model;
+  const memberModelSound = mData.modelSound || mData.clickSound;
+
+  if (mData.clickMessage) {
+    skillsBubbleEl = document.createElement('div');
+    skillsBubbleEl.className = 'minion-bubble visible';
+    skillsBubbleEl.textContent = mData.clickMessage;
+    document.getElementById('skills-labels')?.appendChild(skillsBubbleEl);
+  }
+
+  if (memberModelPath) {
+    keepSkillsModelUpright = true;
+    const modelLoader = new GLTFLoader();
+    modelLoader.load(
+      memberModelPath,
       (gltf) => {
-        memberModelGroup = gltf.scene;
+        const model = gltf.scene;
+        const findConfiguredClip = (name) => name
+          ? gltf.animations.find((clip) => clip.name.toLowerCase() === String(name).toLowerCase())
+          : null;
+        let idleClip = findConfiguredClip(mData.idleAnimation)
+          || gltf.animations.find((clip) => /(^|\|)(idle|standing)$/i.test(clip.name));
+        let interactionClip = findConfiguredClip(mData.interactionAnimation)
+          || gltf.animations.find((clip) => /(^|\|)walk$/i.test(clip.name));
 
-        // Auto-scale so the tallest axis fits within ~36 units
-        const mBounds = new THREE.Box3().setFromObject(memberModelGroup);
-        const mSize   = mBounds.getSize(new THREE.Vector3());
-        const mCenter = mBounds.getCenter(new THREE.Vector3());
-        const mScale  = 36 / Math.max(mSize.x, mSize.y, mSize.z);
-        memberModelGroup.scale.setScalar(mScale);
-        // Centre the model at the origin of skillsGroup
-        modelCenterY = mCenter.y * mScale;
-        modelTopY = (mBounds.max.y - mCenter.y) * mScale;
-        memberModelGroup.position.set(-mCenter.x * mScale, -modelCenterY + modelYOffset, -mCenter.z * mScale);
+        if (!interactionClip && (memberModelSound || !idleClip)) {
+          interactionClip = gltf.animations.find((clip) => clip !== idleClip) || gltf.animations[0];
+        }
+        if (interactionClip === idleClip && memberModelSound) idleClip = null;
 
-        skillsGroup.add(memberModelGroup);
+        if (idleClip || interactionClip) {
+          skillsModelMixer = new THREE.AnimationMixer(model);
+          if (idleClip) {
+            skillsIdleAction = skillsModelMixer.clipAction(idleClip);
+            skillsIdleAction.setLoop(THREE.LoopRepeat, Infinity).play();
+          }
 
-        // Setup audio listener and load the meme sound
-        const listener = new THREE.AudioListener();
-        camera.add(listener);
-        const sound = new THREE.Audio(listener);
-        const audioLoader = new THREE.AudioLoader();
-        audioLoader.load('/oiia-oiia-sound.mp3', function(buffer) {
-          sound.setBuffer(buffer);
-          sound.setLoop(false); // Don't loop, so it can auto-stop
-          sound.setVolume(0.8);
-        });
+          if (interactionClip) {
+            skillsWalkAction = skillsModelMixer.clipAction(interactionClip);
+            skillsWalkAction.setLoop(THREE.LoopOnce, 1);
+            skillsWalkAction.clampWhenFinished = true;
 
-        // Initialize embedded animations in a stopped state (default pose)
-        let actions = [];
-        if (gltf.animations && gltf.animations.length > 0) {
-          memberModelMixer = new THREE.AnimationMixer(memberModelGroup);
-          gltf.animations.forEach(clip => {
-            const action = memberModelMixer.clipAction(clip);
-            actions.push(action);
+            skillsModelMixer.addEventListener('finished', (event) => {
+              if (event.action !== skillsWalkAction) return;
+              skillsWalkAction.stop();
+              skillsIdleAction?.reset().fadeIn(0.2).play();
+              skillsModelIsWalking = false;
+            });
+          }
+
+          skillsModelMixer.update(0);
+        }
+
+        model.updateMatrixWorld(true);
+        const initialBounds = new THREE.Box3().setFromObject(model, true);
+        const initialSize = initialBounds.getSize(new THREE.Vector3());
+        const largestDimension = Math.max(initialSize.x, initialSize.y, initialSize.z);
+        const targetSize = Number(mData.modelSize) || 12;
+
+        if (largestDimension > 0) {
+          model.scale.setScalar(targetSize / largestDimension);
+        }
+
+        // Centre the animated geometry itself, not the potentially offset GLB origin.
+        model.updateMatrixWorld(true);
+        const centredBounds = new THREE.Box3().setFromObject(model, true);
+        const modelCentre = centredBounds.getCenter(new THREE.Vector3());
+        model.position.sub(modelCentre);
+        model.position.y += Number(mData.modelOffsetY ?? mData.modelYOffset ?? 0);
+        model.rotation.y = Number(mData.modelRotationY) || 0;
+        model.updateMatrixWorld(true);
+
+        const finalBounds = new THREE.Box3().setFromObject(model, true);
+        const bubbleAnchorWorld = new THREE.Vector3(
+          (finalBounds.min.x + finalBounds.max.x) / 2,
+          finalBounds.max.y + 0.6,
+          (finalBounds.min.z + finalBounds.max.z) / 2
+        );
+        model.userData.bubbleAnchor = model.worldToLocal(bubbleAnchorWorld);
+
+        // The pivot remains upright; only this outer group rotates around world Y.
+        globe.rotation.set(0, 0, 0);
+        globe.add(model);
+        skillsModelRoot = model;
+        if (memberModelSound) {
+          skillsWalkSound = new Audio(memberModelSound);
+          skillsWalkSound.loop = false;
+          skillsWalkSound.preload = 'auto';
+          skillsWalkSound.addEventListener('ended', () => {
+            if (!skillsWalkAction) skillsModelIsWalking = false;
           });
         }
-        
-        // Raycaster for click detection
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        window.isModelActive = false;
-        
-        window.addEventListener('click', (event) => {
-          if (!memberModelGroup) return;
-          // Normalize mouse coordinates
-          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-          raycaster.setFromCamera(mouse, camera);
-          
-          const intersects = raycaster.intersectObject(memberModelGroup, true);
-          if (intersects.length > 0) {
-            window.isModelActive = !window.isModelActive; // Toggle state
-            
-            if (window.isModelActive) {
-              // Start embedded animations
-              actions.forEach(action => action.play());
-              
-              // Start sound and setup auto-stop
-              if (sound.buffer) {
-                if (sound.isPlaying) sound.stop();
-                sound.play();
-                
-                if (sound.source) {
-                  sound.source.onended = () => {
-                    window.isModelActive = false;
-                    actions.forEach(action => action.stop()); // Resets to default pose
-                  };
-                }
-              }
-            } else {
-              // Stop everything and reset to default pose
-              actions.forEach(action => action.stop());
-              if (sound.buffer && sound.isPlaying) sound.stop();
-            }
-          }
-        });
       },
       undefined,
-      (err) => console.warn('Member model failed to load:', err)
+      (error) => {
+        console.error(`Unable to load skills model: ${memberModelPath}`, error);
+        addFallbackSphere();
+      }
     );
-    // Invisible placeholder so the skills lines still have a centre reference
-    globe = new THREE.Mesh(new THREE.SphereGeometry(0.01), new THREE.MeshBasicMaterial({ visible: false }));
-    skillsGroup.add(globe);
   } else {
-    globe = new THREE.Mesh(new THREE.IcosahedronGeometry(7.5, 2), new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true }));
-    skillsGroup.add(globe);
+    addFallbackSphere();
   }
 
-  // minion speech bubble + click sound toggle
-  if (mData.clickSound || mData.clickMessage) {
-    const bubbleContainer = document.getElementById('skills-labels');
-    minionBubbleEl = document.createElement('div');
-    minionBubbleEl.className = 'minion-bubble visible';
-    minionBubbleEl.textContent = mData.clickMessage || '';
-    if (bubbleContainer) bubbleContainer.appendChild(minionBubbleEl);
+  window.addEventListener('pointerup', (event) => {
+    if (!skillsModelRoot || (!skillsWalkAction && !skillsWalkSound) || skillsModelIsWalking) return;
+    if (event.target.closest('a, button, input, textarea')) return;
 
-    if (mData.clickSound) minionAudio = new Audio(mData.clickSound);
+    skillsPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    skillsPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    skillsRaycaster.setFromCamera(skillsPointer, camera);
 
-    window.addEventListener('click', (e) => {
-      if (!memberModelGroup || !minionAudio) return;
-      pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
-      pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
-      modelRaycaster.setFromCamera(pointerNDC, camera);
-      const hits = modelRaycaster.intersectObject(memberModelGroup, true);
-      if (hits.length === 0) return;
+    if (skillsRaycaster.intersectObject(skillsModelRoot, true).length === 0) return;
 
-      // toggle: click once to play, click again while it's playing to stop
-      if (minionAudio.paused) {
-        minionAudio.currentTime = 0;
-        minionAudio.play().catch(() => {});
-      } else {
-        minionAudio.pause();
-        minionAudio.currentTime = 0;
-      }
-    });
-  }
+    skillsModelIsWalking = true;
+    if (skillsWalkAction) {
+      skillsIdleAction?.fadeOut(0.15);
+      skillsWalkAction.reset().fadeIn(0.15).play();
+    }
 
-  // banana rain, purely decorative
+    if (skillsWalkSound) {
+      skillsWalkSound.pause();
+      skillsWalkSound.currentTime = 0;
+      skillsWalkSound.play().catch((error) => {
+        skillsModelIsWalking = false;
+        console.warn('Unable to play member model sound.', error);
+      });
+    }
+  });
+
   if (mData.rainModel) {
-    const rainLoader = new GLTFLoader();
-    rainLoader.load(mData.rainModel, (gltf) => {
-      const template = gltf.scene;
-      const rBounds = new THREE.Box3().setFromObject(template);
-      const rSize = rBounds.getSize(new THREE.Vector3());
-      const rCenter = rBounds.getCenter(new THREE.Vector3());
-      const rScale = 2.4 / Math.max(rSize.x, rSize.y, rSize.z);
-      const rainCount = mData.rainCount || 20;
+    const rainGroup = new THREE.Group();
+    scene.add(rainGroup);
+    new GLTFLoader().load(
+      mData.rainModel,
+      (gltf) => {
+        const template = gltf.scene;
+        const bounds = new THREE.Box3().setFromObject(template, true);
+        const size = bounds.getSize(new THREE.Vector3());
+        const scale = 2.4 / Math.max(size.x, size.y, size.z, 1);
+        const count = Math.min(Number(mData.rainCount) || 20, 40);
 
-      for (let i = 0; i < rainCount; i++) {
-        const banana = template.clone(true);
-        const s = rScale * (0.7 + Math.random() * 0.6);
-        banana.scale.setScalar(s);
-        banana.position.set(
-          -rCenter.x * s + (Math.random() * 50 - 25),
-          -rCenter.y * s + (Math.random() * 60 - 15),
-          -rCenter.z * s + (Math.random() * 20 - 15)
-        );
-        banana.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-        banana.userData.fallSpeed = 0.03 + Math.random() * 0.05;
-        banana.userData.spinSpeed = (Math.random() - 0.5) * 0.02;
-        bananaRainGroup.add(banana);
-        bananaInstances.push(banana);
-      }
-    }, undefined, (err) => console.warn('banana model did not load', err));
+        for (let index = 0; index < count; index++) {
+          const item = template.clone(true);
+          const itemScale = scale * (0.7 + Math.random() * 0.6);
+          item.scale.setScalar(itemScale);
+          item.position.set(Math.random() * 50 - 25, Math.random() * 60 - 15, Math.random() * 20 - 15);
+          item.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+          item.userData.fallSpeed = 0.03 + Math.random() * 0.05;
+          item.userData.spinSpeed = (Math.random() - 0.5) * 0.02;
+          rainGroup.add(item);
+          decorativeModels.push(item);
+        }
+      },
+      undefined,
+      (error) => console.warn(`Unable to load decorative model: ${mData.rainModel}`, error)
+    );
   }
 
   const skillsBase = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.5, 32), baseMat);
@@ -871,6 +799,86 @@ if (portraitCard) {
   projectCount = projectsData.length;
   const projectColors = [0x1166ff, 0xff1166, 0x11ff66, 0xffaa11, 0xaa11ff];
 
+  function renderProjectMedia(container, project, context = 'card') {
+    if (!container) return;
+
+    container.replaceChildren();
+    container.classList.remove('has-media', 'has-gallery');
+    let media = project.media || {};
+
+    if (context === 'modal' && project.video) {
+      media = { type: 'video', src: project.video, poster: project.thumbnail };
+    } else if (context === 'modal' && project.demoVideo) {
+      media = { type: 'video', src: project.demoVideo, poster: media.src };
+    } else if (context === 'card' && project.thumbnail) {
+      media = { type: 'image', src: project.thumbnail, alt: `${project.title} thumbnail` };
+    } else if ((!media.src && !media.items) && project.image) {
+      media = { type: 'image', src: project.image, alt: `${project.title} preview` };
+    }
+
+    if (media.type === 'gallery' && Array.isArray(media.items) && media.items.length) {
+      if (context === 'card') {
+        media = { type: 'image', src: media.items[0], alt: `${project.title} gallery preview` };
+      } else {
+        const track = document.createElement('div');
+        track.className = 'gallery-track';
+        media.items.forEach((src, itemIndex) => {
+          const image = document.createElement('img');
+          image.src = src;
+          image.alt = `${project.title} image ${itemIndex + 1}`;
+          image.loading = 'lazy';
+          track.appendChild(image);
+        });
+        container.classList.add('has-media', 'has-gallery');
+        container.appendChild(track);
+        return;
+      }
+    }
+
+    const hasSource = typeof media.src === 'string' && media.src.trim() !== '';
+
+    if (!hasSource) {
+      container.classList.remove('has-media', 'has-gallery');
+      const placeholder = document.createElement('div');
+      placeholder.className = 'project-media-empty';
+      placeholder.innerHTML = `
+        <span class="project-media-empty-icon" aria-hidden="true">＋</span>
+        <strong>Add project media</strong>
+        <small>Image or demo video</small>
+      `;
+      container.appendChild(placeholder);
+      return;
+    }
+
+    if (context === 'modal') container.classList.add('has-media');
+
+    if (media.type === 'video') {
+      const video = document.createElement('video');
+      video.src = media.src;
+      video.preload = context === 'modal' ? 'metadata' : 'none';
+      video.playsInline = true;
+      video.controls = context === 'modal';
+      video.muted = context === 'card';
+      if (media.poster) video.poster = media.poster;
+      video.setAttribute('aria-label', media.alt || `${project.title} demo video`);
+      container.appendChild(video);
+
+      if (context === 'card') {
+        const badge = document.createElement('span');
+        badge.className = 'project-video-badge';
+        badge.textContent = '▶ DEMO';
+        container.appendChild(badge);
+      }
+      return;
+    }
+
+    const image = document.createElement('img');
+    image.src = media.src;
+    image.alt = media.alt || `${project.title} preview`;
+    image.loading = 'lazy';
+    container.appendChild(image);
+  }
+
   const projectsBase = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 0.5, 32), baseMat);
   projectsBase.position.y = -5;
   projectsGroup.add(projectsBase);
@@ -879,114 +887,6 @@ if (portraitCard) {
   projectsRing.rotation.x = Math.PI / 2;
   projectsRing.position.y = -4.7;
   projectsGroup.add(projectsRing);
-
-  function getCardMediaHTML(media) {
-    if (!media) return '<span></span>';
-    if (media.type === 'image') return `<img src="${media.src}" alt="" loading="lazy">`;
-    if (media.type === 'video') return `<video src="${media.src}" muted playsinline preload="metadata"></video>`;
-    if (media.type === 'gallery' && media.items && media.items.length) return `<img src="${media.items[0]}" alt="" loading="lazy">`;
-    return '<span></span>';
-  }
-
-  function getLightbox() {
-    let lb = document.getElementById('media-lightbox');
-    if (lb) return lb;
-    lb = document.createElement('div');
-    lb.id = 'media-lightbox';
-    lb.className = 'lightbox-overlay hidden';
-    lb.innerHTML = `
-      <button class="lightbox-close" type="button" aria-label="Close full view">&times;</button>
-      <div class="lightbox-inner"></div>
-    `;
-    document.body.appendChild(lb);
-    lb.addEventListener('click', (e) => {
-      if (e.target === lb) closeLightbox();
-    });
-    lb.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeLightbox();
-    });
-    return lb;
-  }
-
-  function closeLightbox() {
-    const lb = document.getElementById('media-lightbox');
-    if (!lb) return;
-    lb.classList.add('hidden');
-    lb.querySelector('.lightbox-inner').innerHTML = '';
-  }
-
-  function openLightboxImage(src) {
-    const lb = getLightbox();
-    lb.querySelector('.lightbox-inner').innerHTML = `<img src="${src}" alt="">`;
-    lb.classList.remove('hidden');
-  }
-
-  function openLightboxVideo(src) {
-    const lb = getLightbox();
-    lb.querySelector('.lightbox-inner').innerHTML = `<video src="${src}" controls autoplay playsinline></video>`;
-    lb.classList.remove('hidden');
-  }
-
-  function renderModalMedia(media) {
-    const container = document.querySelector('.modal-media-placeholder');
-    if (!container) return;
-    container.innerHTML = '';
-    container.classList.remove('has-gallery');
-
-    if (!media) {
-      container.classList.remove('has-media');
-      container.innerHTML = '<span class="play-icon">▶</span>';
-      return;
-    }
-
-    container.classList.add('has-media');
-
-    if (media.type === 'image') {
-      container.innerHTML = `<img src="${media.src}" alt="">`;
-      container.querySelector('img').addEventListener('click', () => openLightboxImage(media.src));
-    } else if (media.type === 'video') {
-      container.innerHTML = `<video src="${media.src}" controls playsinline></video>`;
-    } else if (media.type === 'gallery' && media.items && media.items.length) {
-      container.classList.add('has-gallery');
-      const track = document.createElement('div');
-      track.className = 'gallery-track';
-      media.items.forEach(src => {
-        const img = document.createElement('img');
-        img.src = src;
-        img.loading = 'lazy';
-        img.addEventListener('click', () => openLightboxImage(src));
-        track.appendChild(img);
-      });
-
-      const prevBtn = document.createElement('button');
-      prevBtn.className = 'gallery-arrow gallery-prev';
-      prevBtn.type = 'button';
-      prevBtn.setAttribute('aria-label', 'Previous image');
-      prevBtn.innerHTML = '←';
-      prevBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        track.scrollBy({ left: -track.clientWidth, behavior: 'smooth' });
-      });
-
-      const nextBtn = document.createElement('button');
-      nextBtn.className = 'gallery-arrow gallery-next';
-      nextBtn.type = 'button';
-      nextBtn.setAttribute('aria-label', 'Next image');
-      nextBtn.innerHTML = '→';
-      nextBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        track.scrollBy({ left: track.clientWidth, behavior: 'smooth' });
-      });
-
-      container.appendChild(track);
-      container.appendChild(prevBtn);
-      container.appendChild(nextBtn);
-    } else {
-      container.classList.remove('has-media');
-      container.innerHTML = '<span class="play-icon">▶</span>';
-    }
-  }
 
   for (let i = 0; i < projectCount; i++) {
     const mesh = new THREE.Mesh(new RoundedBoxGeometry(6.75, 9.75, 0.6, 4, 0.3), new THREE.MeshStandardMaterial({ color: projectColors[i % projectColors.length], roughness: 0.2, metalness: 0.1 }));
@@ -997,15 +897,14 @@ if (portraitCard) {
     
     const data = projectsData[i];
     cardContent.innerHTML = `
-      <div class="project-card-media">
-        ${data.image ? `<img src="${data.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" alt="${data.title}" />` : `<span>🖼️</span>`}
-      </div>
+      <div class="project-card-media"></div>
       <div class="project-card-text">
         <h3>${data.title}</h3>
         <p>${data.desc}</p>
         <button class="card-btn view-details-btn">VIEW DETAILS</button>
       </div>
     `;
+    renderProjectMedia(cardContent.querySelector('.project-card-media'), data, 'card');
 
     const cssObject = new CSS3DObject(cardContent);
     cssObject.scale.set(0.021, 0.021, 0.021);
@@ -1023,16 +922,24 @@ if (portraitCard) {
         span.innerText = t;
         techContainer.appendChild(span);
       });
+      const modalMedia = document.getElementById('modal-media')
+        || document.querySelector('#project-modal .modal-media-placeholder');
+      renderProjectMedia(modalMedia, data, 'modal');
 
-      const mediaContainer = document.querySelector('.modal-left');
-      if (data.video) {
-        mediaContainer.innerHTML = `<video src="${data.video}" controls autoplay style="width: 100%; height: 100%; border-radius: 15px; object-fit: cover; background: #000;"></video>`;
-      } else if (data.image) {
-        mediaContainer.innerHTML = `<img src="${data.image}" style="width: 100%; height: 100%; border-radius: 15px; object-fit: cover;" alt="${data.title}" />`;
-      } else {
-        mediaContainer.innerHTML = `<div class="modal-media-placeholder"><span class="play-icon">▶</span></div>`;
+      const demoLink = document.getElementById('modal-demo-link')
+        || document.querySelector('#project-modal .modal-demo-btn');
+      if (demoLink) {
+        const demoUrl = data.demoUrl || data.video || data.demoVideo || '';
+        const hasDemoUrl = typeof demoUrl === 'string' && demoUrl.trim() !== '';
+        demoLink.hidden = !hasDemoUrl;
+        if (demoLink instanceof HTMLAnchorElement) {
+          demoLink.href = hasDemoUrl ? demoUrl : '#';
+        } else {
+          demoLink.onclick = hasDemoUrl
+            ? () => window.open(demoUrl, '_blank', 'noopener,noreferrer')
+            : null;
+        }
       }
-
       document.getElementById('project-modal').classList.remove('hidden');
     });
 
@@ -1052,9 +959,9 @@ if (portraitCard) {
       else { targetX = 0; targetZ = -6; targetRotY = 0; targetScale = 0.6; }
       
       if (animate) {
-        gsap.to(mesh.position, { x: targetX, z: targetZ, duration: 0.8, ease: "power2.out" });
-        gsap.to(mesh.rotation, { y: targetRotY, duration: 0.8, ease: "power2.out" });
-        gsap.to(mesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.8, ease: "power2.out" });
+        gsap.to(mesh.position, { x: targetX, z: targetZ, duration: 0.5, ease: "power2.out", overwrite: 'auto' });
+        gsap.to(mesh.rotation, { y: targetRotY, duration: 0.5, ease: "power2.out", overwrite: 'auto' });
+        gsap.to(mesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.5, ease: "power2.out", overwrite: 'auto' });
       } else {
         mesh.position.set(targetX, 0, targetZ);
         mesh.rotation.y = targetRotY;
@@ -1082,88 +989,106 @@ if (portraitCard) {
   const closeModalBtn = document.getElementById('close-modal-btn');
   if(closeModalBtn) closeModalBtn.addEventListener('click', () => {
     modal.classList.add('hidden');
-    const video = modal.querySelector('video');
-    if (video) video.pause();
+    const activeVideo = document.querySelector('#project-modal video');
+    if (activeVideo) activeVideo.pause();
   });
 }
 
-// Animation Loop
+// Open the visitor's email app with the contact form details pre-filled.
+if (isMemberPage) {
+  const contactForm = document.querySelector('.contact-form');
+  const sendMessageButton = contactForm?.querySelector('.contact-submit');
+  const recipientLink = document.querySelector('.contact-links a[href^="mailto:"]');
+  const nameInput = contactForm?.querySelector('#contact-name');
+  const emailInput = contactForm?.querySelector('#contact-email');
+  const messageInput = contactForm?.querySelector('#contact-message');
+
+  if (contactForm && sendMessageButton && recipientLink && nameInput && emailInput && messageInput) {
+    nameInput.required = true;
+    emailInput.required = true;
+    messageInput.required = true;
+
+    sendMessageButton.addEventListener('click', () => {
+      if (!contactForm.reportValidity()) return;
+
+      const recipient = recipientLink.getAttribute('href').replace(/^mailto:/i, '').split('?')[0];
+      const senderName = nameInput.value.trim();
+      const senderEmail = emailInput.value.trim();
+      const memberName = window.MEMBER_DATA.name;
+      const subject = `Portfolio enquiry for ${memberName} from ${senderName}`;
+      const body = [
+        `Hello ${memberName},`,
+        '',
+        messageInput.value.trim(),
+        '',
+        `From: ${senderName}`,
+        `Reply email: ${senderEmail}`
+      ].join('\n');
+
+      window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
+  }
+}
+
+// ==========================================
+// ANIMATION LOOP
+// ==========================================
 function animate() {
   requestAnimationFrame(animate);
-  const delta = Math.min(animationClock.getDelta(), 0.05);
+  const frameTime = performance.now();
+
+  const indexAnimationDelta = Math.min(indexModelAnimationClock.getDelta(), 0.05);
+  indexModelMixers.forEach((mixer) => mixer.update(indexAnimationDelta));
+  if (dogMixer) dogMixer.update(indexAnimationDelta);
+  const animationDelta = Math.min(skillsAnimationClock.getDelta(), 0.05);
+  if (skillsModelMixer) skillsModelMixer.update(animationDelta);
 
   stars.rotation.y += 0.0005;
   stars.rotation.x += 0.0002;
 
-  // Falling banana rain
-  if (bananaInstances.length) {
-    bananaInstances.forEach((banana) => {
-      banana.position.y -= banana.userData.fallSpeed;
-      banana.rotation.x += banana.userData.spinSpeed;
-      banana.rotation.y += banana.userData.spinSpeed * 1.4;
-      if (banana.position.y < -30) {
-        banana.position.y = 30 + Math.random() * 10;
-        banana.position.x = Math.random() * 50 - 25;
-        banana.position.z = Math.random() * 20 - 15;
-      }
-    });
-  }
+  decorativeModels.forEach((item) => {
+    item.position.y -= item.userData.fallSpeed;
+    item.rotation.x += item.userData.spinSpeed;
+    item.rotation.y += item.userData.spinSpeed * 1.4;
+    if (item.position.y < -30) {
+      item.position.set(Math.random() * 50 - 25, 30 + Math.random() * 10, Math.random() * 20 - 15);
+    }
+  });
 
-  // Orbiting satellite light
-  const time = Date.now() * 0.0015;
+  // Bone orbit around the landing-page dog.
+  const time = frameTime * 0.0015;
   orbitingLight.position.x = 10 + Math.cos(time) * 16; 
   orbitingLight.position.z = Math.sin(time) * 16; 
   orbitingLight.position.y = Math.sin(time * 0.5) * 6;
   
-  // Make the satellite slowly tumble
+  // Make the bone slowly tumble.
   satellite.rotation.x += 0.01;
   satellite.rotation.y += 0.015;
   satellite.rotation.z += 0.005;
 
-  if (isIndexPage && carouselGroup) {
-    carouselGroup.position.y += Math.sin(Date.now() * 0.001) * 0.01;
-
-    if (dogGroup) {
-      // Gentle idle breathing motion
-      const dogTime = animationClock.elapsedTime;
-      dogGroup.position.y = dogBaseY + scrollProgress * 30 + Math.sin(dogTime * 1.2) * 0.06;
-
-      // Smoothly lerp rotation toward the target set by mouse drag
-      dogGroup.rotation.y += (targetRotationY - dogGroup.rotation.y) * 0.08;
-    }
+  if (isIndexPage && planetGroup && carouselGroup) {
+    carouselGroup.position.y += Math.sin(frameTime * 0.001) * 0.01;
   }
-
-  // Update the skeletal animation mixer
-  if (dogMixer) dogMixer.update(delta);
-
-  // Update member page custom model mixer (e.g. Maxwell the cat)
-  if (memberModelMixer) memberModelMixer.update(delta);
 
   if (isMemberPage && skillsGroup && projectsGroup) {
     const rect = document.getElementById('member-skills').getBoundingClientRect();
     const viewportCenter = window.innerHeight / 2;
-    const spacerCenter = rect.top + (rect.height / 2) - 40; 
+    const verticalFrameAdjustment = keepSkillsModelUpright ? 10 : -40;
+    const spacerCenter = rect.top + (rect.height / 2) + verticalFrameAdjustment;
     const unitPerPixel = (2 * 30 * Math.tan(THREE.MathUtils.degToRad(75 / 2))) / window.innerHeight;
     
     skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
-
-    // Animate the centre model: spin + gentle bob (lowered base Y position)
-    if (memberModelGroup) {
-      if (window.isModelActive) {
-        memberModelGroup.rotation.y += 0.08; // Fast spin when active
-        const bobTime = animationClock.elapsedTime;
-        memberModelGroup.position.y = -4.5 + Math.sin(bobTime * 4.0) * 0.8; // Fast bob
-      } else {
-        memberModelGroup.rotation.y += 0.005; // Gentle idle rotation
-        memberModelGroup.position.y = -4.5; // Stay still when inactive
-      }
+    globe.rotation.y += keepSkillsModelUpright ? 0.002 : 0.005;
+    if (keepSkillsModelUpright) {
+      globe.rotation.x = 0;
+      globe.rotation.z = 0;
     } else {
-      globe.rotation.y += 0.005;
       globe.rotation.x += 0.002;
     }
+    skillsGroup.updateMatrixWorld(true);
 
     skillObjects.forEach((obj, i) => {
-      obj.mesh.position.y = obj.baseY + Math.sin(Date.now() * 0.002 + i) * 0.5;
+      obj.mesh.position.y = obj.baseY + Math.sin(frameTime * 0.002 + i) * 0.5;
       const vector = obj.mesh.position.clone();
       vector.applyMatrix4(skillsGroup.matrixWorld);
       vector.project(camera);
@@ -1172,6 +1097,15 @@ function animate() {
       obj.labelEl.style.left = `${x}px`;
       obj.labelEl.style.top = `${y}px`;
     });
+
+    if (skillsBubbleEl && skillsModelRoot?.userData.bubbleAnchor) {
+      const bubblePosition = skillsModelRoot.userData.bubbleAnchor
+        .clone()
+        .applyMatrix4(skillsModelRoot.matrixWorld)
+        .project(camera);
+      skillsBubbleEl.style.left = `${(bubblePosition.x * 0.5 + 0.5) * window.innerWidth}px`;
+      skillsBubbleEl.style.top = `${(bubblePosition.y * -0.5 + 0.5) * window.innerHeight}px`;
+    }
 
     const pRect = document.getElementById('projects-spacer').getBoundingClientRect();
     const pSpacerCenter = pRect.top + (pRect.height / 2); 
@@ -1186,33 +1120,7 @@ animate();
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRenderPixelRatio));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-window.__checkBubble = () => {
-  const rect = document.getElementById('member-skills').getBoundingClientRect();
-  const viewportCenter = window.innerHeight / 2;
-  const spacerCenter = rect.top + (rect.height / 2) - 40;
-  const unitPerPixel = (2 * 30 * Math.tan(THREE.MathUtils.degToRad(75 / 2))) / window.innerHeight;
-  skillsGroup.position.y = (viewportCenter - spacerCenter) * unitPerPixel;
-  memberModelGroup.position.y = -modelCenterY + modelYOffset;
-  scene.updateMatrixWorld(true);
-
-  const box = new THREE.Box3().setFromObject(memberModelGroup);
-  const topWorld = new THREE.Vector3(0, box.max.y, 0);
-  topWorld.project(camera);
-  const topScreenY = (topWorld.y * -0.5 + 0.5) * window.innerHeight;
-
-  const headPos = new THREE.Vector3(0, modelTopY + 1.5, 0);
-  headPos.applyMatrix4(memberModelGroup.matrixWorld);
-  headPos.project(camera);
-  const bubbleScreenY = (headPos.y * -0.5 + 0.5) * window.innerHeight;
-
-  return JSON.stringify({
-    headTopScreenY: topScreenY, bubbleAnchorScreenY: bubbleScreenY, gap: topScreenY - bubbleScreenY,
-    boxMinY: box.min.y, boxMaxY: box.max.y, groupWorldY: memberModelGroup.position.y, skillsGroupY: skillsGroup.position.y,
-    modelCenterY, modelTopY
-  });
-};

@@ -4,23 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/style.css" />
     <title>Ennis Lam Si Hoong - Portfolio</title>
   </head>
   <body id="member-page" class="ennis-page">
     <canvas id="bg"></canvas>
 
-    <!-- DATA CONFIGURATION -->
-    <!-- Members ONLY need to edit this block to update their 3D text! -->
     <script>
       window.MEMBER_DATA = {
         name: "Ennis Lam Si Hoong",
-        role: "Frontend Developer",
-        skills: ['HTML', 'CSS', 'JAVASCRIPT', 'THREE.JS', 'UI/UX DESIGN', 'NODE.JS'],
+        role: "Software Engineer",
+        skillsModel: "/ennis/bananacat.glb",
+        modelSound: "/ennis/bibilabu sound.mp3",
+        skills: ['REACT.JS', 'VUE.JS', 'JAVASCRIPT', 'THREE.JS', 'SOLIDWORKS', 'C#'],
         projects: [
-          { title: "Quantum Engine", desc: "A next-generation WebGL rendering engine built for space visualizations.", tech: ["Three.js", "WebGL", "GLSL"] },
-          { title: "Nebula App", desc: "A mobile application for tracking real-time cosmic events and stargazing.", tech: ["React Native", "Firebase", "Node.js"] },
-          { title: "Void UI Kit", desc: "A comprehensive design system featuring glassmorphism and dark mode components.", tech: ["Figma", "CSS", "Storybook"] },
-          { title: "Astro E-Commerce", desc: "A futuristic online storefront for buying virtual space real estate.", tech: ["Next.js", "Stripe", "MongoDB"] }
+          { title: "2048++", desc: "2048++ is an improved version of 2048. We added new block such as x2 and locked block to enchance the players experiences.", tech: ["C++"], media: { type: "image", src: "/ennis/2048 preview.png", alt: "2048++ preview" }, demoUrl: "/ennis/2048 demo.mp4" },
+          { title: "Visual Adjustment Layer Operator (VALO)", desc: "VALO is an web-based image processing application. It contains features such as noise reduction, sharpening, blurring, filters, cropping and background removal.", tech: ["Python", "OpenCV"], media: { type: "image", src: "/ennis/VALO preview.png", alt: "VALO preview" }, demoUrl: "/ennis/VALO demo.mp4" },
+          { title: "3D Minecraft-style Anya", desc: "Anya is a famous anime character from Spy X Family. This project is about creating Anya using OpenGL with animation and transformation.", tech: ["C++", "OpenGL"], media: { type: "image", src: "/ennis/Anya preview.png", alt: "Anya preview" }, demoUrl: "/ennis/Anya demo.mp4" },
+          { title: "AeroFly X1", desc: "This is an interactive website built using react.js and three.js. The website is about a drone, AeroFly X1. The websites shows the features and the specification of the drone.", tech: ["React.js", "Three.js"], media: { type: "image", src: "/ennis/drone preview.png", alt: "drone preview" }, demoUrl: "https://group-assignment-product-cszpyaqvy-scjtrymwp.vercel.app/" }
         ]
       };
     </script>
@@ -28,7 +29,7 @@
     <main id="app">
       <nav class="ennis-nav">
         <a href="index.html" class="logo ennis-logo" aria-label="Back to group portfolio">
-          <span class="logo-monogram">EL</span>
+          <span class="logo-monogram">LSH</span>
           <span class="logo-copy">ENNIS <small>PORTFOLIO</small></span>
         </a>
         <ul class="nav-links">
@@ -42,12 +43,11 @@
       <section class="ennis-hero" aria-labelledby="detail-name">
         <div class="hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow"><span></span> FRONTEND DEVELOPER · THREE.JS CREATOR</p>
-            <h1 id="detail-name">Ennis Lam Si Hoong</h1>
-            <p id="detail-role" class="hero-role">Frontend Developer</p>
+            <p class="eyebrow"><span></span> SOFWARE ENGINEER · COMPUTER GRAPHICS & INTERACTIVE SYSTEMS</p>
+            <h1 id="detail-name" style="font-size: 79px;">Ennis Lam Si Hoong</h1>
+            <p id="detail-role" class="hero-role">Software Engineer</p>
             <p class="hero-intro">
-              I design and build immersive digital experiences where thoughtful interfaces,
-              motion and real-time 3D come together.
+              I design and build immersive digital experiences where thoughtful interfaces, motion and real-time 3D come together.
             </p>
             <div class="hero-actions">
               <a class="btn hero-primary" href="#member-projects">Explore my work <span>↘</span></a>
@@ -65,8 +65,6 @@
             <div class="portrait-frame">
               <img src="/members/ennis.jpeg" alt="Ennis Lam Si Hoong" />
               <div class="portrait-overlay"></div>
-              <span class="portrait-index">01 / 04</span>
-              <div class="availability"><i></i> Available for collaboration</div>
             </div>
             <div class="orbit orbit-one"></div>
             <div class="orbit orbit-two"></div>
@@ -79,7 +77,7 @@
         <header class="section-heading">
           <div>
             <p class="section-kicker">01 · CAPABILITIES</p>
-            <h2>Skills in orbit</h2>
+            <h2>Skills</h2>
           </div>
           <p>A growing toolkit for crafting fast, accessible and memorable digital products.</p>
         </header>
@@ -117,8 +115,8 @@
           <div class="contact-intro">
             <p>Have an idea, collaboration or opportunity in mind? I’d love to hear about it.</p>
             <div class="contact-links">
-              <a href="mailto:ennis@example.com"><span>Email</span><strong>ennis@example.com</strong><i>↗</i></a>
-              <a href="https://linkedin.com/in/ennis" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/ennis</strong><i>↗</i></a>
+              <a href="mailto:ennis@graduate.utm.my"><span>Email</span><strong>ennis@graduate.utm.my</strong><i>↗</i></a>
+              <a href="https://www.linkedin.com/in/ennis-lam-si-hoong-36a655301/" target="_blank" rel="noreferrer"><span>LinkedIn</span><strong>linkedin.com/in/ennis</strong><i>↗</i></a>
             </div>
           </div>
 
@@ -150,14 +148,14 @@
         <button id="close-modal-btn" class="modal-close" aria-label="Close project details">&times;</button>
         <div class="modal-layout">
           <div class="modal-left">
-            <div class="modal-media-placeholder"><span class="play-icon">▶</span></div>
+            <div id="modal-media" class="modal-media-placeholder"></div>
           </div>
           <div class="modal-right">
             <h2 id="modal-title">PROJECT TITLE</h2>
             <p id="modal-desc">Brief description.</p>
             <h3 class="modal-tech-title">TECHNOLOGIES USED</h3>
             <div class="tech-stack" id="modal-tech"></div>
-            <button class="btn modal-demo-btn">LIVE DEMO ↗</button>
+            <a id="modal-demo-link" class="btn modal-demo-btn hidden" href="#" target="_blank" rel="noreferrer">OPEN DEMO ↗</a>
           </div>
         </div>
       </div>
