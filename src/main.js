@@ -763,9 +763,26 @@ if (portraitCard) {
     cardContent.className = 'project-card-css3d';
     cardContent.style.pointerEvents = 'auto';
     
-    const data = projectsData[i];
-    cardContent.innerHTML = `
-      <div class="project-card-media"><span>🖼️</span></div>
+const data = projectsData[i];
+
+const projectMedia = data.thumbnail
+  ? `<img
+       src="${data.thumbnail}"
+       alt="${data.title} thumbnail"
+       style="
+         width: 100%;
+         height: 100%;
+         object-fit: cover;
+         display: block;
+         border-radius: inherit;
+       "
+     />`
+  : `<span>🖼️</span>`;
+
+cardContent.innerHTML = `
+  <div class="project-card-media">
+    ${projectMedia}
+  </div>
       <div class="project-card-text">
         <h3>${data.title}</h3>
         <p>${data.desc}</p>
