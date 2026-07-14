@@ -691,6 +691,16 @@ if (isMemberPage && window.MEMBER_DATA) {
         span.innerText = t;
         techContainer.appendChild(span);
       });
+
+      const mediaContainer = document.querySelector('.modal-left');
+      if (data.video) {
+        mediaContainer.innerHTML = `<video src="${data.video}" controls autoplay style="width: 100%; height: 100%; border-radius: 15px; object-fit: cover; background: #000;"></video>`;
+      } else if (data.image) {
+        mediaContainer.innerHTML = `<img src="${data.image}" style="width: 100%; height: 100%; border-radius: 15px; object-fit: cover;" alt="${data.title}" />`;
+      } else {
+        mediaContainer.innerHTML = `<div class="modal-media-placeholder"><span class="play-icon">▶</span></div>`;
+      }
+
       document.getElementById('project-modal').classList.remove('hidden');
     });
 
@@ -738,7 +748,11 @@ if (isMemberPage && window.MEMBER_DATA) {
 
   const modal = document.getElementById('project-modal');
   const closeModalBtn = document.getElementById('close-modal-btn');
-  if(closeModalBtn) closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  if(closeModalBtn) closeModalBtn.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    const video = modal.querySelector('video');
+    if (video) video.pause();
+  });
 }
 
 // ==========================================
