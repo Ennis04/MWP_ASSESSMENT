@@ -104,7 +104,7 @@ const memberCount = 4;
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Frontend Developer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "BSc Computer Science", int: "UI/UX, WebGL", asp: "Create immersive worlds", ach: "Best UI Award", cert: "React Certified" },
   { name: "Liew Choon Pang", role: "Backend Developer", link: "liew.html", image: "/members/liew.png", ed: "BA Digital Arts", int: "Modeling, Texturing", asp: "Lead Art Director", ach: "Top 10 ArtStation", cert: "Blender Master" },
-  { name: "Chua Lin Wei", role: "UI/UX Designer", link: "chua.html", image: "/members/fifi.jpeg", ed: "MSc Software Eng", int: "APIs, Databases", asp: "System Architect", ach: "Hackathon Winner", cert: "AWS Solutions Architect" },
+  { name: "Chua Lin Wei", role: "Scrum Master", link: "chua.html", image: "/members/fifi.jpeg", ed: "BSc Computer Science", int: "Data Analytics, Scrum Master", asp: "Chief Technology Officer", ach: "Penang Heritage Hub System Cert of Contribution", cert: "i-CPROM 2023 Bronze" },
   { name: "Tai Yi Tian", role: "Fullstack Developer", link: "tai.html", image: "/members/tai.jpeg", ed: "MBA, BSc IT", int: "Agile, Leadership", asp: "Tech Lead", ach: "Shipped 10+ Apps", cert: "Scrum Master" }
 ];
 
