@@ -9,6 +9,7 @@ THREE.Cache.enabled = true;
 
 const isIndexPage = document.getElementById('index-page') !== null;
 const isMemberPage = document.getElementById('member-page') !== null;
+const indexCarouselContainer = document.querySelector('.carousel-container');
 
 const canvas = document.querySelector('#bg');
 const scene = new THREE.Scene();
@@ -1402,6 +1403,17 @@ function animate() {
   satellite.rotation.z += 0.005;
 
   if (isIndexPage && planetGroup && carouselGroup) {
+    if (indexCarouselContainer) {
+      const carouselRect = indexCarouselContainer.getBoundingClientRect();
+      const carouselCenter = carouselRect.top + (carouselRect.height / 2);
+      const viewportCenter = window.innerHeight / 2;
+      const distanceFromCamera = camera.position.z - carouselGroup.position.z;
+      const unitsPerPixel = (
+        2 * distanceFromCamera * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+      ) / window.innerHeight;
+      carouselGroup.position.y = (viewportCenter - carouselCenter) * unitsPerPixel;
+    }
+
     if (!landingGroupDragActive && Math.abs(landingGroupSpinVelocity) > 0.0005) {
       planetGroup.rotation.y += landingGroupSpinVelocity;
       landingGroupSpinVelocity *= 0.95;
