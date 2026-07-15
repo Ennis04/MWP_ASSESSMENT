@@ -2,14 +2,14 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import gsap from 'gsap';
+
+THREE.Cache.enabled = true;
 
 const isIndexPage = document.getElementById('index-page') !== null;
 const isMemberPage = document.getElementById('member-page') !== null;
 
-// ==========================================
-// 1. SCENE SETUP
-// ==========================================
 const canvas = document.querySelector('#bg');
 const scene = new THREE.Scene();
 
@@ -22,18 +22,41 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   powerPreference: 'high-performance'
 });
-const maxRenderPixelRatio = 1.75;
+const maxRenderPixelRatio = 1.5;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRenderPixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-const cssRenderer = new CSS3DRenderer();
-cssRenderer.setSize(window.innerWidth, window.innerHeight);
-cssRenderer.domElement.style.position = 'fixed';
-cssRenderer.domElement.style.top = '0';
-cssRenderer.domElement.style.left = '0';
-cssRenderer.domElement.style.pointerEvents = 'none';
-cssRenderer.domElement.style.zIndex = '50';
-document.body.appendChild(cssRenderer.domElement);
+let cssRenderer = null;
+if (isMemberPage) {
+  cssRenderer = new CSS3DRenderer();
+  cssRenderer.setSize(window.innerWidth, window.innerHeight);
+  Object.assign(cssRenderer.domElement.style, {
+    position: 'fixed',
+    top: '0',
+    left: '0',
+    pointerEvents: 'none',
+    zIndex: '50'
+  });
+  document.body.appendChild(cssRenderer.domElement);
+}
+
+const sharedGLTFLoader = new GLTFLoader();
+const sharedGLTFPromises = new Map();
+const scheduleIdle = window.requestIdleCallback
+  ? (callback) => window.requestIdleCallback(callback, { timeout: 1500 })
+  : (callback) => window.setTimeout(callback, 250);
+
+function loadModel(path, onLoad, onError) {
+  if (!sharedGLTFPromises.has(path)) {
+    sharedGLTFPromises.set(path, new Promise((resolve, reject) => {
+      sharedGLTFLoader.load(path, resolve, undefined, reject);
+    }));
+  }
+
+  sharedGLTFPromises.get(path)
+    .then((source) => onLoad({ ...source, scene: cloneSkeleton(source.scene) }))
+    .catch(onError);
+}
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 scene.add(ambientLight);
@@ -46,11 +69,9 @@ const fillLight = new THREE.DirectionalLight(0xffd0a0, 0.6);
 fillLight.position.set(-10, 5, -5);
 scene.add(fillLight);
 
-// The orbiting group carries the bone without casting a purple point light.
 const orbitingLight = new THREE.Group();
 if (isIndexPage) scene.add(orbitingLight);
 
-// Cartoon bone orbiting the dog on the landing page.
 const satellite = new THREE.Group();
 const boneMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.1 });
 const boneShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2, 16), boneMaterial);
@@ -68,7 +89,6 @@ const boneEndGeometry = new THREE.SphereGeometry(0.5, 16, 16);
 
 orbitingLight.add(satellite);
 
-// Stars
 const starsGeo = new THREE.BufferGeometry();
 const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8 });
 const starCount = 1000;
@@ -80,12 +100,8 @@ starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 const stars = new THREE.Points(starsGeo, starsMat);
 scene.add(stars);
 
-// Shared Base Material
 const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8, metalness: 0.2 });
 
-// ==========================================
-// GLOBALS FOR INDEX PAGE
-// ==========================================
 let planetGroup, dogModel, dogMixer;
 let carouselGroup, cuboids = [];
 const landingPortraitModels = [];
@@ -93,15 +109,14 @@ let landingGroupDragActive = false;
 let landingGroupSpinVelocity = 0;
 let updateIndexLandingLayout = null;
 const indexModelMixers = [];
-const indexModelAnimationClock = new THREE.Clock();
+const animationTimer = new THREE.Timer();
 const memberCount = 4;
 
-// Member information
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Software Engineer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "UI/UX, Web Development, IoT", asp: "Create immersive worlds", ach: "ROBOCON MALAYSIA 2025 – Champion & Best Engineering Award", cert: "Anugerah Insan Terbilang Negeri Sembilan", model: "/ennis/bananacat.glb", modelName: "Banana Cat", modelDescription: "Banana Cat is a famous meme in the Intenet. The reason I choose it as my model is that it is cute and always positve and energetic." },
   { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in UI/UX design, interactive web development and real-time computer graphics.", ach: "I'MMERSe 2026 - International Immersive Computing Symposium", cert: "Kaggle Data Visualisation Certification", model: "/liew/bubbles_the_powerpuff_girls.glb", modelName: "Bubble", modelDescription: "Bubble is the sweetest and most emotional member of the Powerpuff Girls superhero trio. Known as \"the joy and the laughter\" ." },
   { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with banana-themed interaction and sound." },
-  { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Tai's animated Oiia cat model with its original sound effect." }
+  { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Oiia cat is a popular meme in the Internet. She is a rescued, blind, senior cat known for her hypnotic, spinning memes set to a catchy oiia oiia audio track." }
 ];
 
 const memberPhotoCanvasWidth = 800;
@@ -165,8 +180,6 @@ function createCenteredPhotoTexture(image) {
   let sourceWidth = imageWidth;
   let sourceHeight = imageHeight;
 
-  // Calculate a centered object-fit: cover crop before creating the texture.
-  // All cards therefore receive pixels with exactly the same dimensions.
   if (imageAspect > targetAspect) {
     sourceWidth = imageHeight * targetAspect;
     sourceX = (imageWidth - sourceWidth) / 2;
@@ -190,8 +203,6 @@ function createCenteredPhotoTexture(image) {
     canvas.height
   );
 
-  // A restrained edge vignette gives the portraits more depth without
-  // obscuring faces or changing the original colours.
   const vignette = context.createRadialGradient(
     canvas.width / 2,
     canvas.height * 0.42,
@@ -219,13 +230,11 @@ function createCenteredPhotoTexture(image) {
 }
 
 if (isIndexPage) {
-  // Landing-page group portrait: the dog stands with every member's model.
   planetGroup = new THREE.Group();
   planetGroup.position.set(10.5, 0, 0);
   scene.add(planetGroup);
 
   const textureLoader = new THREE.TextureLoader();
-  const indexModelLoader = new GLTFLoader();
 
   const portraitPlatform = new THREE.Mesh(
     new THREE.CylinderGeometry(11.45, 12, 0.5, 64),
@@ -294,17 +303,16 @@ if (isIndexPage) {
   };
 
   const landingMembers = [
-    { path: '/ennis/bananacat.glb', position: new THREE.Vector3(-9.2, -4.06, -1.8), targetSize: 12.4, rotationY: 0.08 },
-    { path: './liew/bubbles_the_powerpuff_girls.glb', position: new THREE.Vector3(-3, -4.06, -0.6), targetSize: 10.3, rotationY: 0.05 },
-    { path: '/chuamedia/minion.glb', position: new THREE.Vector3(4.8, -4.06, 0.25), targetSize: 11, rotationY: -0.06 },
-    { path: '/tai/oiiaioooooiai_cat.glb', position: new THREE.Vector3(9.2, -4.06, -1.2), targetSize: 10.4, rotationY: -0.08 }
+    { path: indexMemberData[0].model, position: new THREE.Vector3(-9.2, -4.06, -1.8), targetSize: 12.4, rotationY: 0.08 },
+    { path: indexMemberData[1].model, position: new THREE.Vector3(-3, -4.06, -0.6), targetSize: 10.3, rotationY: 0.05 },
+    { path: indexMemberData[2].model, position: new THREE.Vector3(4.8, -4.06, 0.25), targetSize: 11, rotationY: -0.06 },
+    { path: indexMemberData[3].model, position: new THREE.Vector3(9.2, -4.06, -1.2), targetSize: 10.4, rotationY: -0.08 }
   ];
 
   landingMembers.forEach((config) => {
-    indexModelLoader.load(
+    loadModel(
       config.path,
       (gltf) => addLandingPortraitModel(gltf, config),
-      undefined,
       (error) => console.error(`Unable to load landing portrait model: ${config.path}`, error)
     );
   });
@@ -325,7 +333,7 @@ if (isIndexPage) {
     metalness: 0.1
   });
 
-  indexModelLoader.load(
+  loadModel(
     '/baby-dog/source/baby%20dog.glb',
     (gltf) => {
       gltf.scene.traverse((node) => {
@@ -346,13 +354,11 @@ if (isIndexPage) {
         dogMixer.clipAction(standingClip).setLoop(THREE.LoopRepeat, Infinity).play();
       }
     },
-    undefined,
     (error) => console.error('Unable to load the landing-page dog model.', error)
   );
 
-  // Grabbing any character rotates the complete portrait as one group.
-  // Bounding-box picking is reliable for both skinned and static GLB models.
   let landingDragLastX = 0;
+  let lastLandingHoverCheck = 0;
   const landingDragPointer = new THREE.Vector2();
   const landingDragRaycaster = new THREE.Raycaster();
   const landingHitBox = new THREE.Box3();
@@ -395,6 +401,8 @@ if (isIndexPage) {
       return;
     }
     if (event.target.closest('a, button, input, textarea')) return;
+    if (event.timeStamp - lastLandingHoverCheck < 32) return;
+    lastLandingHoverCheck = event.timeStamp;
     document.body.style.cursor = findLandingPortraitAtPointer(event.clientX, event.clientY) ? 'grab' : '';
   });
 
@@ -406,7 +414,6 @@ if (isIndexPage) {
   window.addEventListener('pointerup', releaseLandingPortrait);
   window.addEventListener('pointerleave', releaseLandingPortrait);
 
-  // Carousel
   carouselGroup = new THREE.Group();
   carouselGroup.position.set(-10, -50, -10); 
   scene.add(carouselGroup);
@@ -449,8 +456,6 @@ if (isIndexPage) {
     const photoWidth = 6.25;
     const photoHeight = 9.25;
     const photo = new THREE.Mesh(new THREE.PlaneGeometry(photoWidth, photoHeight), photoMaterial);
-    // A small optical correction balances the visible frame because the
-    // carousel is intentionally positioned to the left of the camera.
     photo.position.set(0.065, 0, (cardDepth / 2) + 0.012);
     card.add(photo);
     card.userData.memberPhoto = photo;
@@ -473,7 +478,7 @@ if (isIndexPage) {
       card.userData.modelBackdrop = modelBackdrop;
       card.userData.modelContainer = modelContainer;
 
-      indexModelLoader.load(
+      scheduleIdle(() => loadModel(
         member.model,
         (gltf) => {
           const model = gltf.scene;
@@ -503,12 +508,10 @@ if (isIndexPage) {
           modelContainer.add(model);
           modelContainer.userData.ready = true;
         },
-        undefined,
         (error) => console.error(`Unable to load index model: ${member.model}`, error)
-      );
+      ));
     }
 
-    // If the configured image cannot be found, the initials texture remains visible.
     textureLoader.load(
       member.image,
       loadedTexture => {
@@ -548,7 +551,6 @@ if (isIndexPage) {
   }
   updateCarouselPositions(0, false);
 
-  // Scroll Interaction
   function moveCamera() {
     const t = -window.scrollY;
     const vh = window.innerHeight;
@@ -561,14 +563,12 @@ if (isIndexPage) {
     camera.position.z = 30 - (progress * 18); 
     carouselGroup.position.x = -7.5; 
     
-    // Hide the bone when scrolling away from the landing page.
     satellite.visible = progress < 0.1;
   }
   updateIndexLandingLayout = moveCamera;
   window.addEventListener('scroll', moveCamera, { passive: true });
   moveCamera();
 
-  // DOM Click Logic
   const prevBtn = document.getElementById('prev-member');
   const nextBtn = document.getElementById('next-member');
   const dots = document.querySelectorAll('.dot');
@@ -697,9 +697,6 @@ if (isIndexPage) {
   updateMemberInfo(0);
 }
 
-// ==========================================
-// GLOBALS FOR MEMBER PAGE
-// ==========================================
 let skillsGroup, globe, skillObjects = [];
 let skillsModelMixer = null;
 let keepSkillsModelUpright = false;
@@ -710,7 +707,6 @@ let skillsModelIsWalking = false;
 let skillsWalkSound = null;
 let skillsBubbleEl = null;
 const decorativeModels = [];
-const skillsAnimationClock = new THREE.Clock();
 const skillsRaycaster = new THREE.Raycaster();
 const skillsPointer = new THREE.Vector2();
 let projectsGroup, projectCuboids = [];
@@ -719,14 +715,12 @@ let projectCount = 0;
 if (isMemberPage && window.MEMBER_DATA) {
   const mData = window.MEMBER_DATA;
 
-  // Update header automatically
   const nameEl = document.getElementById('detail-name');
   if(nameEl) nameEl.innerText = mData.name;
   
   const roleEl = document.getElementById('detail-role');
   if(roleEl) roleEl.innerText = mData.role;
 
-//interaction of portrait card
 const portraitCard = document.querySelector('.portrait-card');
 
 if (portraitCard) {
@@ -741,7 +735,6 @@ if (portraitCard) {
   let isPortraitDragging = false;
   let portraitBounds = null;
 
-  // These styles improve mouse and touch interaction.
   portraitCard.style.cursor = 'grab';
   portraitCard.style.touchAction = 'none';
   portraitCard.style.userSelect = 'none';
@@ -749,11 +742,9 @@ if (portraitCard) {
   portraitCard.style.transformStyle = 'preserve-3d';
 
   function animatePortraitTilt() {
-    // Smoothly move towards the target rotation.
     currentTiltX += (targetTiltX - currentTiltX) * 0.14;
     currentTiltY += (targetTiltY - currentTiltY) * 0.14;
 
-    // Slightly enlarge the card while it is tilting.
     const tiltAmount = Math.min(
       (Math.abs(currentTiltX) + Math.abs(currentTiltY)) / maxTilt,
       1
@@ -789,7 +780,6 @@ if (portraitCard) {
     const rect =
       portraitBounds || portraitCard.getBoundingClientRect();
 
-    // Convert pointer position into values between -1 and 1.
     const pointerX = Math.max(
       -1,
       Math.min(
@@ -806,7 +796,6 @@ if (portraitCard) {
       )
     );
 
-    // Limit rotation to 20 degrees.
     targetTiltX = -pointerY * maxTilt;
     targetTiltY = pointerX * maxTilt;
 
@@ -821,7 +810,6 @@ if (portraitCard) {
     startTiltAnimation();
   }
 
-  // Desktop hover
   portraitCard.addEventListener('pointerenter', (event) => {
     portraitBounds = portraitCard.getBoundingClientRect();
     updatePortraitTilt(event);
@@ -831,7 +819,6 @@ if (portraitCard) {
     updatePortraitTilt(event);
   });
 
-  // Mouse and touch dragging
   portraitCard.addEventListener('pointerdown', (event) => {
     isPortraitDragging = true;
     portraitBounds =
@@ -860,8 +847,6 @@ if (portraitCard) {
       event.clientY >= rect.top &&
       event.clientY <= rect.bottom;
 
-    // Touch always returns to normal.
-    // Mouse remains tilted if it is still hovering over the card.
     if (event.pointerType !== 'mouse' || !pointerInside) {
       portraitBounds = null;
       resetPortraitTilt();
@@ -882,7 +867,6 @@ if (portraitCard) {
   });
 }
 
-  // Skills Scene
   skillsGroup = new THREE.Group();
   scene.add(skillsGroup);
 
@@ -910,8 +894,7 @@ if (portraitCard) {
 
   if (memberModelPath) {
     keepSkillsModelUpright = true;
-    const modelLoader = new GLTFLoader();
-    modelLoader.load(
+    loadModel(
       memberModelPath,
       (gltf) => {
         const model = gltf.scene;
@@ -991,7 +974,6 @@ if (portraitCard) {
           });
         }
       },
-      undefined,
       (error) => {
         console.error(`Unable to load skills model: ${memberModelPath}`, error);
         addFallbackSphere();
@@ -1011,7 +993,6 @@ if (portraitCard) {
 
     if (skillsRaycaster.intersectObject(skillsModelRoot, true).length === 0) return;
 
-    // second click while it's already going stops it instead of restarting
     if (skillsModelIsWalking) {
       if (skillsWalkSound) {
         skillsWalkSound.pause();
@@ -1044,7 +1025,7 @@ if (portraitCard) {
   if (mData.rainModel) {
     const rainGroup = new THREE.Group();
     scene.add(rainGroup);
-    new GLTFLoader().load(
+    loadModel(
       mData.rainModel,
       (gltf) => {
         const template = gltf.scene;
@@ -1065,7 +1046,6 @@ if (portraitCard) {
           decorativeModels.push(item);
         }
       },
-      undefined,
       (error) => console.warn(`Unable to load decorative model: ${mData.rainModel}`, error)
     );
   }
@@ -1106,7 +1086,6 @@ if (portraitCard) {
     skillObjects.push({ mesh: hexMesh, labelEl: labelEl, baseY: pos.y });
   }
 
-  // Projects Scene
   projectsGroup = new THREE.Group();
   scene.add(projectsGroup);
 
@@ -1341,7 +1320,6 @@ if (portraitCard) {
   });
 }
 
-// Open the visitor's email app with the contact form details pre-filled.
 if (isMemberPage) {
   const contactForm = document.querySelector('.contact-form');
   const sendMessageButton = contactForm?.querySelector('.contact-submit');
@@ -1377,17 +1355,15 @@ if (isMemberPage) {
   }
 }
 
-// ==========================================
-// ANIMATION LOOP
-// ==========================================
 function animate() {
   requestAnimationFrame(animate);
+  if (document.hidden) return;
   const frameTime = performance.now();
 
-  const indexAnimationDelta = Math.min(indexModelAnimationClock.getDelta(), 0.05);
-  indexModelMixers.forEach((mixer) => mixer.update(indexAnimationDelta));
-  if (dogMixer) dogMixer.update(indexAnimationDelta);
-  const animationDelta = Math.min(skillsAnimationClock.getDelta(), 0.05);
+  animationTimer.update();
+  const animationDelta = Math.min(animationTimer.getDelta(), 0.05);
+  indexModelMixers.forEach((mixer) => mixer.update(animationDelta));
+  if (dogMixer) dogMixer.update(animationDelta);
   if (skillsModelMixer) skillsModelMixer.update(animationDelta);
 
   stars.rotation.y += 0.0005;
@@ -1402,21 +1378,17 @@ function animate() {
     }
   });
 
-  // Bone orbit around the complete landing-page group.
   const time = frameTime * 0.0015;
   const portraitCentreX = planetGroup?.position.x ?? 10.5;
   orbitingLight.position.x = portraitCentreX + Math.cos(time) * 15;
   orbitingLight.position.z = Math.sin(time) * 15;
   orbitingLight.position.y = 1 + Math.sin(time * 0.5) * 5;
   
-  // Make the bone slowly tumble.
   satellite.rotation.x += 0.01;
   satellite.rotation.y += 0.015;
   satellite.rotation.z += 0.005;
 
   if (isIndexPage && planetGroup && carouselGroup) {
-    carouselGroup.position.y += Math.sin(frameTime * 0.001) * 0.01;
-
     if (!landingGroupDragActive && Math.abs(landingGroupSpinVelocity) > 0.0005) {
       planetGroup.rotation.y += landingGroupSpinVelocity;
       landingGroupSpinVelocity *= 0.95;
@@ -1466,7 +1438,7 @@ function animate() {
   }
 
   renderer.render(scene, camera);
-  cssRenderer.render(scene, camera);
+  cssRenderer?.render(scene, camera);
 }
 animate();
 
@@ -1475,6 +1447,6 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRenderPixelRatio));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  cssRenderer.setSize(window.innerWidth, window.innerHeight);
+  cssRenderer?.setSize(window.innerWidth, window.innerHeight);
   updateIndexLandingLayout?.();
 });
