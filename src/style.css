@@ -23,7 +23,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Three.js Canvas */
 canvas#bg {
   position: fixed;
   top: 0;
@@ -34,7 +33,6 @@ canvas#bg {
   contain: strict;
 }
 
-/* Navigation */
 nav {
   position: fixed;
   top: 0;
@@ -73,7 +71,6 @@ nav {
   color: var(--accent);
 }
 
-/* Main Content Wrapper */
 main {
   position: absolute;
   top: 0;
@@ -82,7 +79,6 @@ main {
   z-index: 10;
 }
 
-/* Sections */
 .section {
   min-height: 100vh;
   padding: 6rem 4rem;
@@ -90,7 +86,6 @@ main {
   align-items: center;
 }
 
-/* Landing Section */
 #landing {
   position: relative;
 }
@@ -190,7 +185,6 @@ p {
   100% { top: 20px; opacity: 0; }
 }
 
-/* About Us Section */
 #about {
   flex-direction: column;
   justify-content: center;
@@ -216,7 +210,6 @@ h2 {
   gap: 2rem;
 }
 
-/* Carousel Overlay */
 .carousel-container {
   flex: 1;
   display: flex;
@@ -224,8 +217,8 @@ h2 {
   align-items: center;
   justify-content: center;
   position: relative;
-  height: 400px; /* Space for the 3D element */
-  pointer-events: none; /* Let clicks pass through to canvas if needed */
+  height: 400px;
+  pointer-events: none;
 }
 
 .carousel-spacer {
@@ -315,7 +308,6 @@ h2 {
   background: var(--accent);
 }
 
-/* Member Info Panel */
 .member-info {
   flex: 1;
   background: var(--glass-bg);
@@ -372,7 +364,6 @@ h3 {
   font-size: 0.95rem;
 }
 
-/* Responsive */
 @media (max-width: 968px) {
   .about-content {
     flex-direction: column;
@@ -383,7 +374,6 @@ h3 {
   }
 }
 
-/* 3D Skill Labels Overlay */
 .skill-label {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -440,7 +430,6 @@ h3 {
   transform: translate(-50%, -115%);
 }
 
-/* 3D Project Gallery & Modal */
 .project-filters ul {
   list-style: none;
   display: flex;
@@ -607,7 +596,6 @@ h3 {
   }
 }
 
-/* Project Card Overlay (DOM sitting over 3D Card) */
 .project-card-css3d {
   width: 320px;
   height: 460px;
@@ -804,9 +792,6 @@ h3 {
   color: var(--bg-color);
 }
 
-/* =========================================================
-   ENNIS MEMBER PAGE
-   ========================================================= */
 .ennis-page {
   --ennis-accent: #8b5cf6;
   --ennis-cyan: #41e4d6;
@@ -1551,7 +1536,6 @@ h3 {
   }
 }
 
-/* Responsive layout */
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 88px;

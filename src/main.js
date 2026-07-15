@@ -947,7 +947,6 @@ if (portraitCard) {
           model.scale.setScalar(targetSize / largestDimension);
         }
 
-        // Centre the animated geometry itself, not the potentially offset GLB origin.
         model.updateMatrixWorld(true);
         const centredBounds = new THREE.Box3().setFromObject(model, true);
         const modelCentre = centredBounds.getCenter(new THREE.Vector3());
