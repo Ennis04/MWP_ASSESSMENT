@@ -555,13 +555,15 @@ if (isIndexPage) {
     const t = -window.scrollY;
     const vh = window.innerHeight;
     const progress = Math.min(Math.max(-t / vh, 0), 1);
+    const phoneLayout = window.innerWidth < 600;
     const compactLayout = window.innerWidth < 900;
-    planetGroup.position.x = compactLayout ? 6.25 : 10.5;
-    planetGroup.position.y = (progress * 30) + (compactLayout ? 0.75 : 0);
-    planetGroup.scale.setScalar(compactLayout ? 0.72 : 1);
+    planetGroup.position.x = phoneLayout ? 0 : compactLayout ? 5.5 : 10.5;
+    planetGroup.position.y = (progress * 30) + (phoneLayout ? -7.5 : compactLayout ? 0.75 : 0);
+    planetGroup.scale.setScalar(phoneLayout ? 0.48 : compactLayout ? 0.72 : 1);
     carouselGroup.position.y = -50 + (progress * 50);
-    camera.position.z = 30 - (progress * 18); 
-    carouselGroup.position.x = -7.5; 
+    carouselGroup.position.x = phoneLayout ? 0 : compactLayout ? -2.5 : -7.5;
+    carouselGroup.scale.setScalar(phoneLayout ? 0.72 : compactLayout ? 0.86 : 1);
+    camera.position.z = 30 - (progress * (phoneLayout ? 12 : 18));
     
     satellite.visible = progress < 0.1;
   }
@@ -1355,6 +1357,17 @@ if (isMemberPage) {
   }
 }
 
+function updateResponsiveSceneLayout() {
+  if (isMemberPage) {
+    const width = window.innerWidth;
+    const skillsScale = width < 600 ? 0.48 : width < 900 ? 0.78 : 1;
+    const projectsScale = width < 600 ? 0.72 : width < 900 ? 0.86 : 1;
+    skillsGroup?.scale.setScalar(skillsScale);
+    projectsGroup?.scale.setScalar(projectsScale);
+  }
+  updateIndexLandingLayout?.();
+}
+
 function animate() {
   requestAnimationFrame(animate);
   if (document.hidden) return;
@@ -1440,6 +1453,7 @@ function animate() {
   renderer.render(scene, camera);
   cssRenderer?.render(scene, camera);
 }
+updateResponsiveSceneLayout();
 animate();
 
 window.addEventListener('resize', () => {
@@ -1448,5 +1462,5 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRenderPixelRatio));
   renderer.setSize(window.innerWidth, window.innerHeight);
   cssRenderer?.setSize(window.innerWidth, window.innerHeight);
-  updateIndexLandingLayout?.();
+  updateResponsiveSceneLayout();
 });
