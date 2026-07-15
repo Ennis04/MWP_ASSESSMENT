@@ -295,7 +295,7 @@ if (isIndexPage) {
 
   const landingMembers = [
     { path: '/ennis/bananacat.glb', position: new THREE.Vector3(-9.2, -4.06, -1.8), targetSize: 12.4, rotationY: 0.08 },
-    { path: '/liew/panda_head_meme.glb', position: new THREE.Vector3(-4.7, -4.06, -0.6), targetSize: 10.3, rotationY: 0.04 },
+    { path: './liew/bubbles_the_powerpuff_girls.glb', position: new THREE.Vector3(-3, -4.06, -0.6), targetSize: 10.3, rotationY: 0.05 },
     { path: '/chuamedia/minion.glb', position: new THREE.Vector3(4.8, -4.06, 0.25), targetSize: 11, rotationY: -0.06 },
     { path: '/tai/oiiaioooooiai_cat.glb', position: new THREE.Vector3(9.2, -4.06, -1.2), targetSize: 10.4, rotationY: -0.08 }
   ];
