@@ -88,20 +88,16 @@ const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8
 // ==========================================
 let planetGroup, dogModel, dogMixer;
 let carouselGroup, cuboids = [];
+let dogDragActive = false, dogSpinVelocity = 0, dogHitBox = null;
 const indexModelMixers = [];
 const indexModelAnimationClock = new THREE.Clock();
 const memberCount = 4;
 
-// Member information used by the About Us carousel.
-// To add your own photos:
-// 1. Put the image files in public/members/.
-// 2. Update each image path below. Square or portrait images work best.
-// Teammates can enable their model by placing a GLB in public/ and filling these model fields.
-// Keep model as an empty string to retain the normal photo-only behaviour.
+// Member information
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Software Engineer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "UI/UX, Web Development, IoT", asp: "Create immersive worlds", ach: "ROBOCON MALAYSIA 2025 – Champion & Best Engineering Award", cert: "Anugerah Insan Terbilang Negeri Sembilan", model: "/ennis/bananacat.glb", modelName: "Banana Cat", modelDescription: "Banana Cat is a famous meme in the Intenet. The reason I choose it as my model is that it is cute and always positve and energetic." },
   { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023", cert: "AWS Cloud Practitioner", model: "/liew/panda_head_meme.glb", modelName: "Panda Head Meme", modelDescription: "A 3D panda meme model featured in Liew's portfolio." },
-  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Figma, Adobe Photoshop, Power BI, Python, CSS, Scrum", asp: "Eager to learn user-centric design principles. Aims to create accessible and beautiful digital tools.", ach: "Top 10 in Campus Design Challenge", cert: "Google UX Design Certificate", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with Chua's banana-themed interaction and sound." },
+  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with banana-themed interaction and sound." },
   { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Tai's animated Oiia cat model with its original sound effect." }
 ];
 
@@ -261,6 +257,9 @@ if (isIndexPage) {
         node.material = dogMaterial;
       });
       planetGroup.add(dogModel);
+      // dog is a skinned mesh, so precise raycasting against its posed
+      // geometry is unreliable - a padded bounding box works fine instead
+      dogHitBox = new THREE.Box3().setFromObject(dogModel).expandByScalar(1.5);
 
       const standingClip = gltf.animations.find((clip) => /standing|idle/i.test(clip.name))
         || gltf.animations[0];
@@ -273,25 +272,50 @@ if (isIndexPage) {
     (error) => console.error('Unable to load the landing-page dog model.', error)
   );
 
-  // Mouse Dragging Logic for Dog Model
-  let isDraggingDog = false;
-  let previousMousePosition = { x: 0, y: 0 };
+  // Drag on the dog to spin it around; the canvas sits behind the page
+  // content (z-index -1) so these listeners live on window like the other
+  // model click handlers, not on the canvas itself.
+  let dogDragLastX = 0;
+  const dogDragPointer = new THREE.Vector2();
+  const dogDragRaycaster = new THREE.Raycaster();
+  const dogHitPoint = new THREE.Vector3();
 
-  window.addEventListener('mousedown', (e) => {
-    isDraggingDog = true;
-    previousMousePosition = { x: e.clientX, y: e.clientY };
+  const pointerIsOnDog = (clientX, clientY) => {
+    if (!dogModel || !dogHitBox) return false;
+    dogDragPointer.x = (clientX / window.innerWidth) * 2 - 1;
+    dogDragPointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    dogDragRaycaster.setFromCamera(dogDragPointer, camera);
+    return dogDragRaycaster.ray.intersectBox(dogHitBox, dogHitPoint) !== null;
+  };
+
+  window.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('a, button, input, textarea')) return;
+    if (!pointerIsOnDog(event.clientX, event.clientY)) return;
+    dogDragActive = true;
+    dogDragLastX = event.clientX;
+    dogSpinVelocity = 0;
+    document.body.style.cursor = 'grabbing';
   });
 
-  window.addEventListener('mousemove', (e) => {
-    if (isDraggingDog && planetGroup) {
-      const deltaX = e.clientX - previousMousePosition.x;
-      planetGroup.rotation.y += deltaX * 0.01;
+  window.addEventListener('pointermove', (event) => {
+    if (dogDragActive) {
+      const deltaX = event.clientX - dogDragLastX;
+      dogDragLastX = event.clientX;
+      dogSpinVelocity = deltaX * 0.012;
+      if (dogModel) dogModel.rotation.y += dogSpinVelocity;
+      return;
     }
-    previousMousePosition = { x: e.clientX, y: e.clientY };
+    if (event.target.closest('a, button, input, textarea')) return;
+    document.body.style.cursor = pointerIsOnDog(event.clientX, event.clientY) ? 'grab' : '';
   });
 
-  window.addEventListener('mouseup', () => isDraggingDog = false);
-  window.addEventListener('mouseleave', () => isDraggingDog = false);
+  const releaseDogDrag = () => {
+    if (!dogDragActive) return;
+    dogDragActive = false;
+    document.body.style.cursor = '';
+  };
+  window.addEventListener('pointerup', releaseDogDrag);
+  window.addEventListener('pointerleave', releaseDogDrag);
 
   // Carousel
   carouselGroup = new THREE.Group();
@@ -721,7 +745,7 @@ if (isMemberPage && window.MEMBER_DATA) {
   }
 
   window.addEventListener('pointerup', (event) => {
-    if (!skillsModelRoot || (!skillsWalkAction && !skillsWalkSound) || skillsModelIsWalking) return;
+    if (!skillsModelRoot || (!skillsWalkAction && !skillsWalkSound)) return;
     if (event.target.closest('a, button, input, textarea')) return;
 
     skillsPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -729,6 +753,20 @@ if (isMemberPage && window.MEMBER_DATA) {
     skillsRaycaster.setFromCamera(skillsPointer, camera);
 
     if (skillsRaycaster.intersectObject(skillsModelRoot, true).length === 0) return;
+
+    // second click while it's already going stops it instead of restarting
+    if (skillsModelIsWalking) {
+      if (skillsWalkSound) {
+        skillsWalkSound.pause();
+        skillsWalkSound.currentTime = 0;
+      }
+      if (skillsWalkAction) {
+        skillsWalkAction.fadeOut(0.15);
+        skillsIdleAction?.reset().fadeIn(0.15).play();
+      }
+      skillsModelIsWalking = false;
+      return;
+    }
 
     skillsModelIsWalking = true;
     if (skillsWalkAction) {
@@ -819,6 +857,38 @@ if (isMemberPage && window.MEMBER_DATA) {
   projectCount = projectsData.length;
   const projectColors = [0x1166ff, 0xff1166, 0x11ff66, 0xffaa11, 0xaa11ff];
 
+  function openMediaLightbox(kind, src) {
+    let overlay = document.getElementById('media-lightbox');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'media-lightbox';
+      overlay.className = 'lightbox-overlay hidden';
+      overlay.innerHTML = `
+        <button class="lightbox-close" type="button" aria-label="Close full view">&times;</button>
+        <div class="lightbox-inner"></div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeMediaLightbox();
+      });
+      overlay.querySelector('.lightbox-close').addEventListener('click', closeMediaLightbox);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMediaLightbox();
+      });
+    }
+    overlay.querySelector('.lightbox-inner').innerHTML = kind === 'video'
+      ? `<video src="${src}" controls autoplay playsinline></video>`
+      : `<img src="${src}" alt="">`;
+    overlay.classList.remove('hidden');
+  }
+
+  function closeMediaLightbox() {
+    const overlay = document.getElementById('media-lightbox');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.querySelector('.lightbox-inner').innerHTML = '';
+  }
+
   function renderProjectMedia(container, project, context = 'card') {
     if (!container) return;
 
@@ -828,8 +898,6 @@ if (isMemberPage && window.MEMBER_DATA) {
 
     if (context === 'modal' && project.video) {
       media = { type: 'video', src: project.video, poster: project.thumbnail };
-    } else if (context === 'modal' && project.demoVideo) {
-      media = { type: 'video', src: project.demoVideo, poster: media.src };
     } else if (context === 'card' && project.thumbnail) {
       media = { type: 'image', src: project.thumbnail, alt: `${project.title} thumbnail` };
     } else if ((!media.src && !media.items) && project.image) {
@@ -847,6 +915,7 @@ if (isMemberPage && window.MEMBER_DATA) {
           image.src = src;
           image.alt = `${project.title} image ${itemIndex + 1}`;
           image.loading = 'lazy';
+          image.addEventListener('click', () => openMediaLightbox('image', src));
           track.appendChild(image);
         });
         container.classList.add('has-media', 'has-gallery');
@@ -896,6 +965,7 @@ if (isMemberPage && window.MEMBER_DATA) {
     image.src = media.src;
     image.alt = media.alt || `${project.title} preview`;
     image.loading = 'lazy';
+    if (context === 'modal') image.addEventListener('click', () => openMediaLightbox('image', media.src));
     container.appendChild(image);
   }
 
@@ -956,7 +1026,7 @@ if (isMemberPage && window.MEMBER_DATA) {
           demoLink.href = hasDemoUrl ? demoUrl : '#';
         } else {
           demoLink.onclick = hasDemoUrl
-            ? () => window.open(demoUrl, '_blank', 'noopener,noreferrer')
+            ? () => openMediaLightbox('video', demoUrl)
             : null;
         }
       }
@@ -1088,6 +1158,11 @@ function animate() {
 
   if (isIndexPage && planetGroup && carouselGroup) {
     carouselGroup.position.y += Math.sin(frameTime * 0.001) * 0.01;
+
+    if (dogModel && !dogDragActive && Math.abs(dogSpinVelocity) > 0.0005) {
+      dogModel.rotation.y += dogSpinVelocity;
+      dogSpinVelocity *= 0.95;
+    }
   }
 
   if (isMemberPage && skillsGroup && projectsGroup) {
