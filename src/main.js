@@ -99,8 +99,8 @@ const memberCount = 4;
 // Member information
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Software Engineer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "UI/UX, Web Development, IoT", asp: "Create immersive worlds", ach: "ROBOCON MALAYSIA 2025 – Champion & Best Engineering Award", cert: "Anugerah Insan Terbilang Negeri Sembilan", model: "/ennis/bananacat.glb", modelName: "Banana Cat", modelDescription: "Banana Cat is a famous meme in the Intenet. The reason I choose it as my model is that it is cute and always positve and energetic." },
-  { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023", cert: "AWS Cloud Practitioner", model: "/liew/panda_head_meme.glb", modelName: "Panda Head Meme", modelDescription: "A 3D panda meme model featured in Liew's portfolio." },
-  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "Minions are a movie character who loves bananas. They talk in a funny and gibberish language making them cute and simple." },
+  { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in UI/UX design, interactive web development and real-time computer graphics.", ach: "I'MMERSe 2026 - International Immersive Computing Symposium", cert: "Kaggle Data Visualisation Certification", model: "/liew/bubbles_the_powerpuff_girls.glb", modelName: "Bubble", modelDescription: "Bubble is the sweetest and most emotional member of the Powerpuff Girls superhero trio. Known as \"the joy and the laughter\" ." },
+  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with banana-themed interaction and sound." },
   { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Tai's animated Oiia cat model with its original sound effect." }
 ];
 
@@ -725,6 +725,162 @@ if (isMemberPage && window.MEMBER_DATA) {
   
   const roleEl = document.getElementById('detail-role');
   if(roleEl) roleEl.innerText = mData.role;
+
+//interaction of portrait card
+const portraitCard = document.querySelector('.portrait-card');
+
+if (portraitCard) {
+  const maxTilt = 20;
+
+  let currentTiltX = 0;
+  let currentTiltY = 0;
+  let targetTiltX = 0;
+  let targetTiltY = 0;
+
+  let animationFrame = null;
+  let isPortraitDragging = false;
+  let portraitBounds = null;
+
+  // These styles improve mouse and touch interaction.
+  portraitCard.style.cursor = 'grab';
+  portraitCard.style.touchAction = 'none';
+  portraitCard.style.userSelect = 'none';
+  portraitCard.style.willChange = 'transform';
+  portraitCard.style.transformStyle = 'preserve-3d';
+
+  function animatePortraitTilt() {
+    // Smoothly move towards the target rotation.
+    currentTiltX += (targetTiltX - currentTiltX) * 0.14;
+    currentTiltY += (targetTiltY - currentTiltY) * 0.14;
+
+    // Slightly enlarge the card while it is tilting.
+    const tiltAmount = Math.min(
+      (Math.abs(currentTiltX) + Math.abs(currentTiltY)) / maxTilt,
+      1
+    );
+
+    const scale = 1 + tiltAmount * 0.025;
+
+    portraitCard.style.transform = `
+      perspective(1100px)
+      rotateX(${currentTiltX}deg)
+      rotateY(${currentTiltY}deg)
+      scale3d(${scale}, ${scale}, ${scale})
+    `;
+
+    const stillMoving =
+      Math.abs(targetTiltX - currentTiltX) > 0.02 ||
+      Math.abs(targetTiltY - currentTiltY) > 0.02;
+
+    if (stillMoving) {
+      animationFrame = requestAnimationFrame(animatePortraitTilt);
+    } else {
+      animationFrame = null;
+    }
+  }
+
+  function startTiltAnimation() {
+    if (animationFrame === null) {
+      animationFrame = requestAnimationFrame(animatePortraitTilt);
+    }
+  }
+
+  function updatePortraitTilt(event) {
+    const rect =
+      portraitBounds || portraitCard.getBoundingClientRect();
+
+    // Convert pointer position into values between -1 and 1.
+    const pointerX = Math.max(
+      -1,
+      Math.min(
+        1,
+        ((event.clientX - rect.left) / rect.width) * 2 - 1
+      )
+    );
+
+    const pointerY = Math.max(
+      -1,
+      Math.min(
+        1,
+        ((event.clientY - rect.top) / rect.height) * 2 - 1
+      )
+    );
+
+    // Limit rotation to 20 degrees.
+    targetTiltX = -pointerY * maxTilt;
+    targetTiltY = pointerX * maxTilt;
+
+    startTiltAnimation();
+  }
+
+  function resetPortraitTilt() {
+    targetTiltX = 0;
+    targetTiltY = 0;
+    portraitCard.style.cursor = 'grab';
+
+    startTiltAnimation();
+  }
+
+  // Desktop hover
+  portraitCard.addEventListener('pointerenter', (event) => {
+    portraitBounds = portraitCard.getBoundingClientRect();
+    updatePortraitTilt(event);
+  });
+
+  portraitCard.addEventListener('pointermove', (event) => {
+    updatePortraitTilt(event);
+  });
+
+  // Mouse and touch dragging
+  portraitCard.addEventListener('pointerdown', (event) => {
+    isPortraitDragging = true;
+    portraitBounds =
+      portraitBounds || portraitCard.getBoundingClientRect();
+
+    portraitCard.style.cursor = 'grabbing';
+    portraitCard.setPointerCapture(event.pointerId);
+
+    updatePortraitTilt(event);
+  });
+
+  portraitCard.addEventListener('pointerup', (event) => {
+    isPortraitDragging = false;
+    portraitCard.style.cursor = 'grab';
+
+    if (portraitCard.hasPointerCapture(event.pointerId)) {
+      portraitCard.releasePointerCapture(event.pointerId);
+    }
+
+    const rect =
+      portraitBounds || portraitCard.getBoundingClientRect();
+
+    const pointerInside =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+
+    // Touch always returns to normal.
+    // Mouse remains tilted if it is still hovering over the card.
+    if (event.pointerType !== 'mouse' || !pointerInside) {
+      portraitBounds = null;
+      resetPortraitTilt();
+    }
+  });
+
+  portraitCard.addEventListener('pointerleave', () => {
+    if (!isPortraitDragging) {
+      portraitBounds = null;
+      resetPortraitTilt();
+    }
+  });
+
+  portraitCard.addEventListener('pointercancel', () => {
+    isPortraitDragging = false;
+    portraitBounds = null;
+    resetPortraitTilt();
+  });
+}
 
   // Skills Scene
   skillsGroup = new THREE.Group();
