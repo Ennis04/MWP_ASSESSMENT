@@ -88,7 +88,10 @@ const baseMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8
 // ==========================================
 let planetGroup, dogModel, dogMixer;
 let carouselGroup, cuboids = [];
-let dogDragActive = false, dogSpinVelocity = 0, dogHitBox = null;
+const landingPortraitModels = [];
+let landingGroupDragActive = false;
+let landingGroupSpinVelocity = 0;
+let updateIndexLandingLayout = null;
 const indexModelMixers = [];
 const indexModelAnimationClock = new THREE.Clock();
 const memberCount = 4;
@@ -97,7 +100,7 @@ const memberCount = 4;
 const indexMemberData = [
   { name: "Ennis Lam Si Hoong", role: "Software Engineer", link: "ennis.html", image: "/members/ennis.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "UI/UX, Web Development, IoT", asp: "Create immersive worlds", ach: "ROBOCON MALAYSIA 2025 – Champion & Best Engineering Award", cert: "Anugerah Insan Terbilang Negeri Sembilan", model: "/ennis/bananacat.glb", modelName: "Banana Cat", modelDescription: "Banana Cat is a famous meme in the Intenet. The reason I choose it as my model is that it is cute and always positve and energetic." },
   { name: "Liew Choon Pang", role: "Graphics and Multimedia Software", link: "liew.html", image: "/members/liew.png", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Python, Java, Node.js, Power BI, Three.js, Unity", asp: "Interested in scalable database management. Hopes to become a Cloud Architect.", ach: "Participated in National University Hackathon 2023", cert: "AWS Cloud Practitioner", model: "/liew/panda_head_meme.glb", modelName: "Panda Head Meme", modelDescription: "A 3D panda meme model featured in Liew's portfolio." },
-  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "An animated Minion model with banana-themed interaction and sound." },
+  { name: "Chua Lin Wei", role: "Data Analytics", link: "chua.html", image: "/members/fifi.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Data Analytics, Scrum Master", asp: "Become a Chief Technology Officer", ach: "i-CPROM 2023", cert: "Certification of Contribution Penang Heritage Trust", model: "/chuamedia/minion.glb", modelName: "Minion", modelDescription: "Minions are a movie character who loves bananas. They talk in a funny and gibberish language making them cute and simple." },
   { name: "Tai Yi Tian", role: "Graphics and Multimedia Software", link: "tai.html", image: "/members/tai.jpeg", ed: "Bachelor of Computer Science (Graphics and Multimedia Software)", int: "Vue.js, C++, Python, Java, Unity, Power BI", asp: "Interested in Image Processing and AI. Aspires to be a Software Developer.", ach: "CGPA 3.93", cert: "—", model: "/tai/oiiaioooooiai_cat.glb", modelName: "Oiia Cat", modelDescription: "Tai's animated Oiia cat model with its original sound effect." }
 ];
 
@@ -216,13 +219,96 @@ function createCenteredPhotoTexture(image) {
 }
 
 if (isIndexPage) {
-  // Dog landing model replacing the previous Saturn scene.
+  // Landing-page group portrait: the dog stands with every member's model.
   planetGroup = new THREE.Group();
-  planetGroup.position.set(10, 0, 0);
+  planetGroup.position.set(10.5, 0, 0);
   scene.add(planetGroup);
 
   const textureLoader = new THREE.TextureLoader();
   const indexModelLoader = new GLTFLoader();
+
+  const portraitPlatform = new THREE.Mesh(
+    new THREE.CylinderGeometry(11.45, 12, 0.5, 64),
+    new THREE.MeshStandardMaterial({
+      color: 0x171426,
+      roughness: 0.7,
+      metalness: 0.25,
+      transparent: true,
+      opacity: 0.92
+    })
+  );
+  portraitPlatform.position.set(0, -4.35, 0.15);
+  portraitPlatform.scale.z = 0.44;
+  planetGroup.add(portraitPlatform);
+
+  const portraitRing = new THREE.Mesh(
+    new THREE.TorusGeometry(10.9, 0.085, 12, 96),
+    new THREE.MeshBasicMaterial({ color: 0x7c3cff, transparent: true, opacity: 0.8 })
+  );
+  portraitRing.position.set(0, -4.06, 0.15);
+  portraitRing.rotation.x = Math.PI / 2;
+  portraitRing.scale.z = 0.44;
+  planetGroup.add(portraitRing);
+
+  const portraitLight = new THREE.PointLight(0x8b5cf6, 24, 28, 2);
+  portraitLight.position.set(0, 4, 6);
+  planetGroup.add(portraitLight);
+
+  const addLandingPortraitModel = (gltf, {
+    position,
+    targetSize,
+    rotationY = 0,
+    animate = true
+  }) => {
+    const model = gltf.scene;
+    model.rotation.y = rotationY;
+    model.updateMatrixWorld(true);
+
+    const initialBounds = new THREE.Box3().setFromObject(model, true);
+    const initialSize = initialBounds.getSize(new THREE.Vector3());
+    const largestDimension = Math.max(initialSize.x, initialSize.y, initialSize.z, 0.001);
+    model.scale.setScalar(targetSize / largestDimension);
+    model.updateMatrixWorld(true);
+
+    const scaledBounds = new THREE.Box3().setFromObject(model, true);
+    const centre = scaledBounds.getCenter(new THREE.Vector3());
+    model.position.x -= centre.x;
+    model.position.y -= scaledBounds.min.y;
+    model.position.z -= centre.z;
+    model.position.add(position);
+    model.updateMatrixWorld(true);
+    planetGroup.add(model);
+    landingPortraitModels.push(model);
+
+    if (animate && gltf.animations.length) {
+      const portraitClip = gltf.animations.find((clip) => /idle|standing|(^|\|)h+i+$|wave/i.test(clip.name));
+      if (portraitClip) {
+        const mixer = new THREE.AnimationMixer(model);
+        mixer.clipAction(portraitClip).setLoop(THREE.LoopRepeat, Infinity).play();
+        indexModelMixers.push(mixer);
+        mixer.update(0);
+      }
+    }
+
+    return model;
+  };
+
+  const landingMembers = [
+    { path: '/ennis/bananacat.glb', position: new THREE.Vector3(-9.2, -4.06, -1.8), targetSize: 12.4, rotationY: 0.08 },
+    { path: '/liew/panda_head_meme.glb', position: new THREE.Vector3(-4.7, -4.06, -0.6), targetSize: 10.3, rotationY: 0.04 },
+    { path: '/chuamedia/minion.glb', position: new THREE.Vector3(4.8, -4.06, 0.25), targetSize: 11, rotationY: -0.06 },
+    { path: '/tai/oiiaioooooiai_cat.glb', position: new THREE.Vector3(9.2, -4.06, -1.2), targetSize: 10.4, rotationY: -0.08 }
+  ];
+
+  landingMembers.forEach((config) => {
+    indexModelLoader.load(
+      config.path,
+      (gltf) => addLandingPortraitModel(gltf, config),
+      undefined,
+      (error) => console.error(`Unable to load landing portrait model: ${config.path}`, error)
+    );
+  });
+
   const dogTexture = textureLoader.load('/baby-dog/textures/gltf_embedded_0.png');
   const dogNormal = textureLoader.load('/baby-dog/textures/gltf_embedded_2.png');
   const dogAO = textureLoader.load('/baby-dog/textures/gltf_embedded_3@channels=R.png');
@@ -242,24 +328,16 @@ if (isIndexPage) {
   indexModelLoader.load(
     '/baby-dog/source/baby%20dog.glb',
     (gltf) => {
-      dogModel = gltf.scene;
-      dogModel.updateMatrixWorld(true);
-      const bounds = new THREE.Box3().setFromObject(dogModel, true);
-      const size = bounds.getSize(new THREE.Vector3());
-      const centre = bounds.getCenter(new THREE.Vector3());
-      const scale = 20 / Math.max(size.x, size.y, size.z, 1);
-      dogModel.scale.setScalar(scale);
-      dogModel.position.set(-centre.x * scale, -centre.y * scale, -centre.z * scale);
-      dogModel.rotation.y = -0.2;
-
-      dogModel.traverse((node) => {
+      gltf.scene.traverse((node) => {
         if (!node.isMesh) return;
         node.material = dogMaterial;
       });
-      planetGroup.add(dogModel);
-      // dog is a skinned mesh, so precise raycasting against its posed
-      // geometry is unreliable - a padded bounding box works fine instead
-      dogHitBox = new THREE.Box3().setFromObject(dogModel).expandByScalar(1.5);
+      dogModel = addLandingPortraitModel(gltf, {
+        position: new THREE.Vector3(0, -4.06, 1.5),
+        targetSize: 9.6,
+        rotationY: -0.15,
+        animate: false
+      });
 
       const standingClip = gltf.animations.find((clip) => /standing|idle/i.test(clip.name))
         || gltf.animations[0];
@@ -272,50 +350,61 @@ if (isIndexPage) {
     (error) => console.error('Unable to load the landing-page dog model.', error)
   );
 
-  // Drag on the dog to spin it around; the canvas sits behind the page
-  // content (z-index -1) so these listeners live on window like the other
-  // model click handlers, not on the canvas itself.
-  let dogDragLastX = 0;
-  const dogDragPointer = new THREE.Vector2();
-  const dogDragRaycaster = new THREE.Raycaster();
-  const dogHitPoint = new THREE.Vector3();
+  // Grabbing any character rotates the complete portrait as one group.
+  // Bounding-box picking is reliable for both skinned and static GLB models.
+  let landingDragLastX = 0;
+  const landingDragPointer = new THREE.Vector2();
+  const landingDragRaycaster = new THREE.Raycaster();
+  const landingHitBox = new THREE.Box3();
 
-  const pointerIsOnDog = (clientX, clientY) => {
-    if (!dogModel || !dogHitBox) return false;
-    dogDragPointer.x = (clientX / window.innerWidth) * 2 - 1;
-    dogDragPointer.y = -(clientY / window.innerHeight) * 2 + 1;
-    dogDragRaycaster.setFromCamera(dogDragPointer, camera);
-    return dogDragRaycaster.ray.intersectBox(dogHitBox, dogHitPoint) !== null;
+  const findLandingPortraitAtPointer = (clientX, clientY) => {
+    landingDragPointer.x = (clientX / window.innerWidth) * 2 - 1;
+    landingDragPointer.y = -(clientY / window.innerHeight) * 2 + 1;
+    landingDragRaycaster.setFromCamera(landingDragPointer, camera);
+
+    let closestModel = null;
+    let closestDistance = Infinity;
+    landingPortraitModels.forEach((model) => {
+      landingHitBox.setFromObject(model, true).expandByScalar(0.35);
+      const hitPoint = landingDragRaycaster.ray.intersectBox(landingHitBox, new THREE.Vector3());
+      if (!hitPoint) return;
+      const distance = landingDragRaycaster.ray.origin.distanceToSquared(hitPoint);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestModel = model;
+      }
+    });
+    return closestModel;
   };
 
   window.addEventListener('pointerdown', (event) => {
     if (event.target.closest('a, button, input, textarea')) return;
-    if (!pointerIsOnDog(event.clientX, event.clientY)) return;
-    dogDragActive = true;
-    dogDragLastX = event.clientX;
-    dogSpinVelocity = 0;
+    if (!findLandingPortraitAtPointer(event.clientX, event.clientY)) return;
+    landingGroupDragActive = true;
+    landingDragLastX = event.clientX;
+    landingGroupSpinVelocity = 0;
     document.body.style.cursor = 'grabbing';
   });
 
   window.addEventListener('pointermove', (event) => {
-    if (dogDragActive) {
-      const deltaX = event.clientX - dogDragLastX;
-      dogDragLastX = event.clientX;
-      dogSpinVelocity = deltaX * 0.012;
-      if (dogModel) dogModel.rotation.y += dogSpinVelocity;
+    if (landingGroupDragActive) {
+      const deltaX = event.clientX - landingDragLastX;
+      landingDragLastX = event.clientX;
+      landingGroupSpinVelocity = deltaX * 0.008;
+      planetGroup.rotation.y += landingGroupSpinVelocity;
       return;
     }
     if (event.target.closest('a, button, input, textarea')) return;
-    document.body.style.cursor = pointerIsOnDog(event.clientX, event.clientY) ? 'grab' : '';
+    document.body.style.cursor = findLandingPortraitAtPointer(event.clientX, event.clientY) ? 'grab' : '';
   });
 
-  const releaseDogDrag = () => {
-    if (!dogDragActive) return;
-    dogDragActive = false;
+  const releaseLandingPortrait = () => {
+    if (!landingGroupDragActive) return;
+    landingGroupDragActive = false;
     document.body.style.cursor = '';
   };
-  window.addEventListener('pointerup', releaseDogDrag);
-  window.addEventListener('pointerleave', releaseDogDrag);
+  window.addEventListener('pointerup', releaseLandingPortrait);
+  window.addEventListener('pointerleave', releaseLandingPortrait);
 
   // Carousel
   carouselGroup = new THREE.Group();
@@ -464,7 +553,10 @@ if (isIndexPage) {
     const t = -window.scrollY;
     const vh = window.innerHeight;
     const progress = Math.min(Math.max(-t / vh, 0), 1);
-    planetGroup.position.y = progress * 30;
+    const compactLayout = window.innerWidth < 900;
+    planetGroup.position.x = compactLayout ? 6.25 : 10.5;
+    planetGroup.position.y = (progress * 30) + (compactLayout ? 0.75 : 0);
+    planetGroup.scale.setScalar(compactLayout ? 0.72 : 1);
     carouselGroup.position.y = -50 + (progress * 50);
     camera.position.z = 30 - (progress * 18); 
     carouselGroup.position.x = -7.5; 
@@ -472,6 +564,7 @@ if (isIndexPage) {
     // Hide the bone when scrolling away from the landing page.
     satellite.visible = progress < 0.1;
   }
+  updateIndexLandingLayout = moveCamera;
   window.addEventListener('scroll', moveCamera, { passive: true });
   moveCamera();
 
@@ -483,6 +576,8 @@ if (isIndexPage) {
   const detailItems = Array.from(document.querySelectorAll('.details-list li'));
   const detailLabels = ['Education:', 'Career Interests:', 'Aspirations:', 'Achievements:', 'Certifications:'];
   const memberInfoPanel = document.querySelector('.member-info');
+  const flipHint = document.getElementById('member-flip-hint');
+  const flipHintText = flipHint?.querySelector('.flip-hint-text');
   const indexCardRaycaster = new THREE.Raycaster();
   const indexCardPointer = new THREE.Vector2();
   let modelViewIndex = null;
@@ -492,6 +587,12 @@ if (isIndexPage) {
     const isModelView = modelViewIndex === index;
 
     memberInfoPanel?.classList.toggle('is-model-view', isModelView);
+    flipHint?.classList.toggle('is-model-view', isModelView);
+    if (flipHintText) {
+      flipHintText.textContent = isModelView
+        ? 'Click the frame to return to the portrait'
+        : 'Click the frame to view the 3D model';
+    }
 
     detailItems.forEach((item, itemIndex) => {
       item.hidden = false;
@@ -1145,11 +1246,12 @@ function animate() {
     }
   });
 
-  // Bone orbit around the landing-page dog.
+  // Bone orbit around the complete landing-page group.
   const time = frameTime * 0.0015;
-  orbitingLight.position.x = 10 + Math.cos(time) * 16; 
-  orbitingLight.position.z = Math.sin(time) * 16; 
-  orbitingLight.position.y = Math.sin(time * 0.5) * 6;
+  const portraitCentreX = planetGroup?.position.x ?? 10.5;
+  orbitingLight.position.x = portraitCentreX + Math.cos(time) * 15;
+  orbitingLight.position.z = Math.sin(time) * 15;
+  orbitingLight.position.y = 1 + Math.sin(time * 0.5) * 5;
   
   // Make the bone slowly tumble.
   satellite.rotation.x += 0.01;
@@ -1159,9 +1261,9 @@ function animate() {
   if (isIndexPage && planetGroup && carouselGroup) {
     carouselGroup.position.y += Math.sin(frameTime * 0.001) * 0.01;
 
-    if (dogModel && !dogDragActive && Math.abs(dogSpinVelocity) > 0.0005) {
-      dogModel.rotation.y += dogSpinVelocity;
-      dogSpinVelocity *= 0.95;
+    if (!landingGroupDragActive && Math.abs(landingGroupSpinVelocity) > 0.0005) {
+      planetGroup.rotation.y += landingGroupSpinVelocity;
+      landingGroupSpinVelocity *= 0.95;
     }
   }
 
@@ -1218,4 +1320,5 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRenderPixelRatio));
   renderer.setSize(window.innerWidth, window.innerHeight);
   cssRenderer.setSize(window.innerWidth, window.innerHeight);
+  updateIndexLandingLayout?.();
 });
